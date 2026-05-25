@@ -64,6 +64,34 @@ export function WorkspaceApp() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+      {/* Paper texture — fine grain + warm vignette */}
+      <div aria-hidden style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none" }}>
+        {/* Fine grain */}
+        <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23g)'/%3E%3C/svg%3E")`,
+          backgroundSize: "200px 200px",
+          backgroundRepeat: "repeat",
+          opacity: 0.28,
+          mixBlendMode: "overlay",
+        }} />
+        {/* Coarser fiber layer */}
+        <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.25' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23f)'/%3E%3C/svg%3E")`,
+          backgroundSize: "400px 400px",
+          backgroundRepeat: "repeat",
+          opacity: 0.06,
+          mixBlendMode: "multiply",
+        }} />
+        {/* Edge vignette */}
+        <div style={{
+          position: "absolute", inset: 0,
+          background: "radial-gradient(ellipse 75% 65% at 50% 50%, transparent 25%, rgba(120,85,40,0.22) 100%)",
+        }} />
+      </div>
+
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
       <TopBar active={screen} onNavigate={(s) => navigate(s)} />
 
       {screen === "landing" && (
@@ -94,6 +122,7 @@ export function WorkspaceApp() {
       )}
 
       <Toast msg={toastMsg} onDone={() => setToastMsg("")} />
+      </div>
     </div>
   );
 }

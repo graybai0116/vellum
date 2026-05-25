@@ -21,7 +21,8 @@ export function EtherealShadow({ color = 'rgba(128,128,128,1)', animation, noise
   const id = `es-${useId().replace(/:/g, '')}`;
   const animEnabled = !!(animation && animation.scale > 0);
 
-  const duration     = animation ? mapRange(animation.speed, 1, 100, 40, 0.8)      : 10;
+  // quadratic ease so high speed values get much shorter durations
+  const duration     = animation ? Math.pow(1 - (animation.speed - 1) / 99, 2) * 39.5 + 0.5 : 10;
   const displacement = animation ? mapRange(animation.scale, 1, 100, 10, 140)      : 0;
   const freqX        = animation ? mapRange(animation.scale, 0, 100, 0.002, 0.009) : 0.004;
   const freqY        = animation ? mapRange(animation.scale, 0, 100, 0.003, 0.013) : 0.006;

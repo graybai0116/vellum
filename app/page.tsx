@@ -21,7 +21,7 @@ export default function LandingPage() {
     <div style={{ minHeight: "100vh", background: "var(--paper)", position: "relative" }}>
       <EtherealShadow
         color="rgba(197, 105, 74, 0.92)"
-        animation={{ scale: 100, speed: 95 }}
+        animation={{ scale: 100, speed: 90 }}
         noise={{ opacity: 1, scale: 1.1 }}
         style={{ position: "fixed", inset: 0, zIndex: 0 }}
       />
@@ -30,7 +30,10 @@ export default function LandingPage() {
         position: "fixed", top: 0, left: 0, right: 0, zIndex: 50,
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "22px 40px",
-        backdropFilter: "blur(20px) saturate(1.4)",
+        background: "rgba(255, 255, 255, 0.06)",
+        backdropFilter: "blur(4px)",
+        borderBottom: "1px solid rgba(255, 255, 255, 0.18)",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.22)",
       }}>
         <a href="#top" style={{ display: "flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
           <Mark size={28} />
@@ -59,7 +62,7 @@ export default function LandingPage() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--fg-mute)", display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 36 }}>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--fg-mute)", display: "inline-flex", alignItems: "center", gap: 10, marginBottom: 36, animation: "blurUp 0.9s cubic-bezier(0.22,1,0.36,1) both" }}>
             <span style={{ width: 24, height: 1, background: "var(--rule-strong)" }} />
             A reading instrument for images
             <span style={{ width: 24, height: 1, background: "var(--rule-strong)" }} />
@@ -72,16 +75,18 @@ export default function LandingPage() {
             fontWeight: 480, fontVariationSettings: '"opsz" 144, "SOFT" 50',
             color: "var(--ink)", maxWidth: 1400, textAlign: "center",
           }}>
-            Visual language,<br />
-            <em style={{ fontStyle: "italic", fontFamily: "var(--font-accent)", fontWeight: 450, color: "var(--walnut)" }}>extracted</em>
-            <span style={{ color: "var(--terracotta)" }}>.</span>
+            <span style={{ display: "block", animation: "blurUp 1s cubic-bezier(0.22,1,0.36,1) 0.15s both" }}>Visual language,</span>
+            <span style={{ display: "block", animation: "blurUp 1s cubic-bezier(0.22,1,0.36,1) 0.35s both" }}>
+              <em style={{ fontStyle: "italic", fontFamily: "var(--font-accent)", fontWeight: 450, color: "var(--walnut)" }}>extracted</em>
+              <span style={{ color: "var(--terracotta)" }}>.</span>
+            </span>
           </h1>
 
-          <p style={{ maxWidth: 580, fontFamily: "var(--font-accent)", fontStyle: "italic", fontSize: "clamp(18px, 1.5vw, 22px)", lineHeight: 1.45, color: "var(--walnut)", margin: "36px 0 44px", fontWeight: 400, textAlign: "center" }}>
+          <p style={{ maxWidth: 580, fontFamily: "var(--font-accent)", fontStyle: "italic", fontSize: "clamp(18px, 1.5vw, 22px)", lineHeight: 1.45, color: "var(--walnut)", margin: "36px 0 44px", fontWeight: 400, textAlign: "center", animation: "blurUp 1s cubic-bezier(0.22,1,0.36,1) 0.55s both" }}>
             Drop a photograph, a still, a painting. Vellum returns a precise prompt — palette, lighting, mood, composition — ready for any image model.
           </p>
 
-          <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 14, alignItems: "center", animation: "blurUp 1s cubic-bezier(0.22,1,0.36,1) 0.7s both" }}>
             <Link href="/workspace" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "var(--ink)", color: "var(--chalk)", padding: "18px 28px", borderRadius: 4, fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em", textDecoration: "none", transition: "all 220ms var(--ease-out)" }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--walnut)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--ink)"; }}
