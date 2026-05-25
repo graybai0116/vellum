@@ -1,0 +1,36 @@
+import Link from "next/link";
+import { Mark } from "@/components/ui/Mark";
+
+type Screen = "landing" | "analyzing" | "results" | "library";
+
+export function TopBar({
+  active, onNavigate,
+}: {
+  active: Screen;
+  onNavigate: (s: Screen) => void;
+}) {
+  return (
+    <header className="topbar-minimal">
+      <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
+        <Mark size={26} />
+        <span style={{
+          fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 520,
+          letterSpacing: "0.005em", color: "var(--ink)", lineHeight: 1,
+          fontVariationSettings: '"opsz" 84',
+        }}>VELLUM</span>
+      </Link>
+      <div className="topbar-right">
+        <button
+          onClick={() => onNavigate("landing")}
+          className={`min-link${active === "landing" ? " active" : ""}`}
+        >New</button>
+        <button
+          onClick={() => onNavigate("library")}
+          className={`min-link${active === "library" ? " active" : ""}`}
+        >Library</button>
+        <span className="topbar-divider" />
+        <div className="avatar">CL</div>
+      </div>
+    </header>
+  );
+}
