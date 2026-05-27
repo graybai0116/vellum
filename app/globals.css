@@ -194,6 +194,11 @@ h2 { font-size: var(--t-h2); font-weight: 510; letter-spacing: -0.03em; }
   color: var(--fg-3); letter-spacing: 0;
 }
 
+@keyframes scrollBounce {
+  0%, 100% { transform: translateY(0); opacity: 0.75; }
+  50%       { transform: translateY(7px); opacity: 1; }
+}
+
 .fade-enter { animation: fadeIn 480ms var(--ease-out); }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
