@@ -5,14 +5,13 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
 import { LIBRARY, BOARDS, LibraryItem } from "@/lib/data";
 
 export function LibraryScreen({
-  onNavigate, savedSet, onToggleSave, onOpenModal, extraItems = [], historyItems = [], hasLastAnalysis = false, onBackToResults,
+  onNavigate, savedSet, onToggleSave, onOpenModal, extraItems = [], hasLastAnalysis = false, onBackToResults,
 }: {
   onNavigate: (s: "landing") => void;
   savedSet: Set<string>;
   onToggleSave: (id: string) => void;
   onOpenModal: (id: string) => void;
   extraItems?: LibraryItem[];
-  historyItems?: LibraryItem[];
   hasLastAnalysis?: boolean;
   onBackToResults?: () => void;
 }) {

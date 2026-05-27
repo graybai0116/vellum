@@ -54,19 +54,12 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   const analyzedItemsRef = useRef<Map<string, LibraryItem>>(new Map());
   const [modalItemId, setModalItemId] = useState<string | null>(null);
 
-  const navigate = (s: Screen | "results-sample" | "back-to-results", id?: string) => {
+  const navigate = (s: Screen | "back-to-results", id?: string) => {
     if (s === "results" && id) {
       const allItems = [...analysisHistory, ...savedUploads, ...LIBRARY];
       const found = allItems.find((x) => x.id === id);
       if (found) setAnalysisMode(found.subjects ? "realism" : "style");
       setCurrentItemId(id); setUploadedImage(null); setAnalysisResult(null); setScreen("results");
-    } else if (s === "results-sample") {
-      const sample = LIBRARY[0];
-      setAnalyzingImage({ src: sample.image, name: "sample · editorial-interior.jpg" });
-      setCurrentItemId(sample.id);
-      setAnalysisResult(null);
-      setAnalysisReady(true);
-      setScreen("analyzing");
     } else if (s === "back-to-results") {
       setScreen("results");
     } else if (s === "landing") {
@@ -97,12 +90,31 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       .catch(() => { setAnalysisError(true); setAnalysisReady(true); });
   };
 
+  const handleUploadUrl = (url: string, mode: AnalysisMode) => {
+    const name = url.split("/").pop()?.split("?")[0] || "image";
+    setAnalyzingImage({ src: url, name });
+    setAnalysisResult(null);
+    setAnalysisReady(false);
+    setAnalysisError(false);
+    setAnalysisMode(mode);
+    setScreen("analyzing");
+
+    fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageUrl: url, imageName: name, mode }),
+    })
+      .then((r) => r.json())
+      .then((result) => { analyzedItemsRef.current.set(result.id, result); setAnalysisResult(result); setAnalysisReady(true); setAnalysisHistory((prev) => [result, ...prev]); })
+      .catch(() => { setAnalysisError(true); setAnalysisReady(true); });
+  };
+
   useEffect(() => {
     try { localStorage.setItem("vellum_saved", JSON.stringify([...savedSet])); } catch {}
   }, [savedSet]);
 
   useEffect(() => {
-    try { localStorage.setItem("vellum_uploads", JSON.stringify(savedUploads)); } catch {}
+    try { localStorage.setItem("vellum_uploads", JSON.stringify(savedUploads.slice(0, 30))); } catch {}
   }, [savedUploads]);
 
   useEffect(() => {
@@ -185,7 +197,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       <TopBar active={screen} onNavigate={(s) => navigate(s)} />
 
       {screen === "landing" && (
-        <LandingScreen onUpload={handleUpload} onNavigate={() => navigate("results-sample")} />
+        <LandingScreen onUpload={handleUpload} onUploadUrl={handleUploadUrl} />
       )}
       {screen === "analyzing" && analyzingImage && (
         <AnalyzingScreen image={analyzingImage} onDone={handleAnalyzingDone} ready={analysisReady} error={analysisError} onBack={() => navigate("landing")} />
@@ -194,7 +206,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
         <ResultsScreen item={currentItem} image={uploadedImage} mode={analysisMode} onNavigate={() => navigate("library")} onToast={setToastMsg} onSave={requestToggleSave} isSaved={savedSet.has(currentItem.id)} />
       )}
       {screen === "library" && (
-        <LibraryScreen onNavigate={() => navigate("landing")} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} extraItems={savedUploads} historyItems={analysisHistory} hasLastAnalysis={analysisResult !== null} onBackToResults={() => navigate("back-to-results")} />
+        <LibraryScreen onNavigate={() => navigate("landing")} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} extraItems={savedUploads} hasLastAnalysis={analysisResult !== null} onBackToResults={() => navigate("back-to-results")} />
       )}
       {screen === "history" && (
         <HistoryScreen items={analysisHistory} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} onNavigate={() => navigate("landing")} />

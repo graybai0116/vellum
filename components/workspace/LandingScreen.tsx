@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import { ArrowUp, PaintBrush, Camera } from "@phosphor-icons/react";
+import { ArrowUp, PaintBrush, Camera, ArrowRight } from "@phosphor-icons/react";
 import { InlinePhotoSwap } from "@/components/ui/InlinePhotoSwap";
 
 export type AnalysisMode = "style" | "realism";
@@ -11,14 +11,17 @@ interface UploadedImage {
 }
 
 export function LandingScreen({
-  onUpload, onNavigate,
+  onUpload,
+  onUploadUrl,
 }: {
   onUpload: (img: UploadedImage, mode: AnalysisMode) => void;
-  onNavigate: (s: "results-sample") => void;
+  onUploadUrl: (url: string, mode: AnalysisMode) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [mode, setMode] = useState<AnalysisMode>("style");
+  const [urlInput, setUrlInput] = useState("");
+  const [urlError, setUrlError] = useState("");
 
   const handleFiles = (files: FileList | null) => {
     const f = files?.[0];
@@ -26,6 +29,16 @@ export function LandingScreen({
     const reader = new FileReader();
     reader.onload = (e) => onUpload({ name: f.name, dataUrl: e.target?.result as string }, mode);
     reader.readAsDataURL(f);
+  };
+
+  const handleUrlSubmit = () => {
+    const url = urlInput.trim();
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      setUrlError("Must be a valid http/https URL");
+      return;
+    }
+    setUrlError("");
+    onUploadUrl(url, mode);
   };
 
   return (
@@ -92,6 +105,7 @@ export function LandingScreen({
           ))}
         </div>
 
+        {/* Drop zone */}
         <div
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
@@ -101,7 +115,7 @@ export function LandingScreen({
             width: "100%",
             background: dragging ? "var(--chalk)" : "transparent",
             border: `1px dashed ${dragging ? "var(--terracotta)" : "var(--rule-strong)"}`,
-            borderRadius: "var(--r-lg)", padding: "88px 48px",
+            borderRadius: "var(--r-lg)", padding: "72px 48px",
             cursor: "pointer", transition: "all 220ms var(--ease-out)",
             display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
           }}
@@ -114,20 +128,44 @@ export function LandingScreen({
           }}>
             <ArrowUp weight="thin" size={22} />
           </div>
-          <div className="meta-mono" style={{
-            color: "var(--fg-mute)", display: "flex", flexWrap: "wrap",
-            justifyContent: "center", alignItems: "center", columnGap: 14, rowGap: 6,
-          }}>
-            <span style={{ color: "var(--rust)", borderBottom: "1px solid color-mix(in oklch, var(--rust) 30%, transparent)" }}>
-              Drop a file
-            </span>
-            <span style={{ color: "var(--fg-faint)" }}>·</span>
-            <button
-              onClick={(e) => { e.stopPropagation(); onNavigate("results-sample"); }}
-              style={{ color: "var(--rust)", borderBottom: "1px solid color-mix(in oklch, var(--rust) 30%, transparent)", background: "none", border: "none", cursor: "pointer", font: "inherit" }}
-            >try a sample</button>
+          <div className="meta-mono" style={{ color: "var(--rust)" }}>
+            Drop a file or click to browse
           </div>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => handleFiles(e.target.files)} />
+        </div>
+
+        {/* URL input */}
+        <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="meta-mono" style={{ color: "var(--fg-mute)", textAlign: "center" }}>or paste an image URL</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <input
+              type="url"
+              placeholder="https://example.com/image.jpg"
+              value={urlInput}
+              onChange={(e) => { setUrlInput(e.target.value); setUrlError(""); }}
+              onKeyDown={(e) => { if (e.key === "Enter") handleUrlSubmit(); }}
+              style={{
+                flex: 1, padding: "11px 14px",
+                fontFamily: "var(--font-mono)", fontSize: 12,
+                background: "var(--bg-sunken)", border: `1px solid ${urlError ? "var(--terracotta)" : "var(--rule)"}`,
+                borderRadius: "var(--r-sm)", color: "var(--walnut)",
+                outline: "none", transition: "border-color 160ms var(--ease-out)",
+              }}
+              onFocus={(e) => { if (!urlError) e.currentTarget.style.borderColor = "var(--walnut)"; }}
+              onBlur={(e) => { if (!urlError) e.currentTarget.style.borderColor = "var(--rule)"; }}
+            />
+            <button
+              onClick={handleUrlSubmit}
+              disabled={!urlInput.trim()}
+              className="btn btn-accent"
+              style={{ flexShrink: 0 }}
+            >
+              Analyze <ArrowRight weight="thin" size={14} />
+            </button>
+          </div>
+          {urlError && (
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--terracotta)" }}>{urlError}</div>
+          )}
         </div>
       </div>
     </div>

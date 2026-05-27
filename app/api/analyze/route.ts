@@ -85,15 +85,21 @@ const REALISM_PROMPT = `Analyze this image for perfect AI replication. Return ON
 // ─── Handler ───────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
-    const { imageDataUrl, imageName, mode = "style" } = await req.json();
+    const { imageDataUrl, imageUrl, imageName, mode = "style" } = await req.json();
 
-    const [header, base64Data] = imageDataUrl.split(",");
-    const rawType = header.match(/:(.*?);/)?.[1] || "image/jpeg";
-    const mediaType = (
-      ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(rawType)
-        ? rawType
-        : "image/jpeg"
-    ) as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+    let imageSource;
+    if (imageUrl) {
+      imageSource = { type: "image" as const, source: { type: "url" as const, url: imageUrl as string } };
+    } else {
+      const [header, base64Data] = imageDataUrl.split(",");
+      const rawType = header.match(/:(.*?);/)?.[1] || "image/jpeg";
+      const mediaType = (
+        ["image/jpeg", "image/png", "image/gif", "image/webp"].includes(rawType)
+          ? rawType
+          : "image/jpeg"
+      ) as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+      imageSource = { type: "image" as const, source: { type: "base64" as const, media_type: mediaType, data: base64Data } };
+    }
 
     const isRealism = mode === "realism";
 
@@ -105,7 +111,7 @@ export async function POST(req: NextRequest) {
         {
           role: "user",
           content: [
-            { type: "image", source: { type: "base64", media_type: mediaType, data: base64Data } },
+            imageSource,
             { type: "text", text: isRealism ? REALISM_PROMPT : STYLE_PROMPT },
           ],
         },
@@ -126,7 +132,7 @@ export async function POST(req: NextRequest) {
       id: `upload-${Date.now()}`,
       title: analysis.title || "Untitled",
       italic: analysis.italic || "",
-      image: imageDataUrl,
+      image: imageUrl || imageDataUrl,
       palette: (analysis.palette || []).slice(0, 5),
       tags: analysis.tags || [],
       mood: analysis.mood || "",
