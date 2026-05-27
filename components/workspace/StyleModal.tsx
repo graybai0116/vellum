@@ -1,6 +1,6 @@
 "use client";
-import { useState, useEffect, useRef, useMemo } from "react";
-import { BookmarkSimple, Export, X, ArrowLeft, ArrowRight, Copy, Check, PencilSimple } from "@phosphor-icons/react";
+import { useState, useEffect, useRef } from "react";
+import { BookmarkSimple, Export, X, ArrowLeft, ArrowRight, Copy, Check, PencilSimple, ListDashes, Tag, TerminalWindow, ArrowsOut } from "@phosphor-icons/react";
 import { PromptHighlight } from "@/components/ui/PromptHighlight";
 import { LibraryItem } from "@/lib/data";
 
@@ -11,6 +11,91 @@ const ICON_BTN: React.CSSProperties = {
   transition: "background 140ms var(--ease-out), color 140ms var(--ease-out)",
 };
 
+const INLINE: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6,
+  padding: "7px 12px", fontFamily: "var(--font-mono)", fontSize: 11,
+  letterSpacing: "0.04em", background: "var(--paper)", color: "var(--walnut)",
+  border: "1px solid var(--rule)", borderRadius: 4, cursor: "pointer",
+  transition: "all 140ms var(--ease-out)", whiteSpace: "nowrap",
+};
+
+// ─── Formatters ───────────────────────────────────────────────────────────────
+const ANTI_AI = "no 8k, no masterpiece, no cinematic grade, no professional studio lighting, no perfect exposure, no beauty filter, no airbrush, no HDR, no digital art, no CGI, no 3D render, no smooth gradients, no AI aesthetic, no iPhone, no smartphone camera, no modern digital perfection";
+const ALLOWED_REALISM = "natural grain allowed, imperfect composition allowed, overexposed highlights allowed, harsh shadows allowed, motion blur allowed, candid framing allowed";
+
+type Mode = "style" | "realism";
+
+function fmtMidjourneyStyle(item: LibraryItem) {
+  const colorKws = item.palette.map((c) => c.name.toLowerCase()).slice(0, 3).join(", ");
+  const lighting = item.lighting.split(" · ")[0].toLowerCase();
+  const mood = item.mood.split(" · ").map((w) => w.toLowerCase()).join(", ");
+  const comp = item.composition.split(" · ")[0].toLowerCase();
+  const tex = item.texture.split(" · ")[0].toLowerCase();
+  return { prompt: `${lighting} lighting, ${comp} composition, ${colorKws}, ${mood}, ${tex}, editorial photography, film grain`, flags: item.flags || "--ar 4:5 --style raw --s 200" };
+}
+function fmtFLUXStyle(item: LibraryItem) {
+  const hexList = item.palette.map((c) => c.hex).join(", ");
+  const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
+  return `${item.promptText} Color palette: ${hexList}. Lighting: ${lighting}. ${item.texture.replace(/ · /g, ", ")}.`;
+}
+function fmtSDStyle(item: LibraryItem) {
+  return {
+    positive: [item.lighting.split(" · ")[0].toLowerCase(), item.mood.split(" · ").map((w) => w.toLowerCase()).join(", "), item.composition.split(" · ")[0].toLowerCase(), ...item.palette.map((c) => c.name.toLowerCase()), item.texture.split(" · ")[0].toLowerCase(), "film grain", "editorial photography"].join(", "),
+    negative: "blurry, oversaturated, digital noise, cartoonish, anime, plastic skin, airbrushed",
+  };
+}
+function fmtDALLEStyle(item: LibraryItem) {
+  const colors = item.palette.map((c) => c.name.toLowerCase()).join(", ");
+  const mood = item.mood.split(" · ")[0].toLowerCase();
+  const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
+  return `A ${mood} photograph. ${item.promptText} Lighting: ${lighting}. Color palette: ${colors}. ${item.texture.split(" · ")[0].toLowerCase()} texture. No digital art, no over-sharpening.`;
+}
+function fmtGeminiStyle(item: LibraryItem) {
+  const mood = item.mood.split(" · ")[0].toLowerCase();
+  const colors = item.palette.map((c) => c.name.toLowerCase()).join(", ");
+  return `${mood.charAt(0).toUpperCase() + mood.slice(1)} photograph. ${item.promptText} Color tones: ${colors}. ${item.composition.split(" · ")[0]} framing. Photographic style, natural light, no over-sharpening.`;
+}
+function fmtMidjourneyRealism(item: LibraryItem) {
+  const subjects = item.subjects || item.promptText;
+  const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
+  const colors = item.palette.map((c) => c.name.toLowerCase()).slice(0, 3).join(", ");
+  const tex = item.texture.replace(/ · /g, ", ").toLowerCase();
+  return { prompt: `${subjects} ${lighting} lighting. ${item.promptText} ${colors}. ${tex}. candid photography, authentic snapshot`, flags: (item.flags || "--ar 4:5 --style raw --s 180").replace("--s 200", "--s 140") };
+}
+function fmtFLUXRealism(item: LibraryItem) {
+  const hexList = item.palette.map((c) => c.hex).join(", ");
+  const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
+  const subjects = item.subjects || item.promptText;
+  return `Photograph. ${subjects} ${item.promptText} Lighting: ${lighting}. Color palette: ${hexList}. ${item.texture.replace(/ · /g, ", ")}. ${ALLOWED_REALISM}. ${ANTI_AI}.`;
+}
+function fmtSDRealism(item: LibraryItem) {
+  const subjects = item.subjects || item.promptText;
+  const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
+  return {
+    positive: [subjects, lighting, item.mood.split(" · ").map((w) => w.toLowerCase()).join(", "), ...item.palette.map((c) => c.name.toLowerCase()), item.texture.split(" · ")[0].toLowerCase(), "film grain", "candid photography", "authentic", "(photorealistic:1.3)", "(RAW photo:1.2)"].join(", "),
+    negative: "8k, masterpiece, cinematic, professional studio lighting, sharp focus, perfect exposure, perfect composition, beauty filter, airbrushed, smooth skin, plastic texture, CGI, 3d render, digital art, anime, cartoon, watermark, signature, iPhone, smartphone, modern digital, excessive makeup, studio backdrop",
+  };
+}
+function fmtDALLERealism(item: LibraryItem) {
+  const colors = item.palette.map((c) => c.name.toLowerCase()).join(", ");
+  const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
+  const subjects = item.subjects || item.promptText;
+  return `Photograph. ${subjects} ${item.promptText} Lighting: ${lighting}. Color palette: ${colors}. ${item.texture.replace(/ · /g, ", ")}. ${ALLOWED_REALISM}. ${ANTI_AI}.`;
+}
+function fmtGeminiRealism(item: LibraryItem) {
+  const mood = item.mood.split(" · ")[0].toLowerCase();
+  const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
+  const colors = item.palette.map((c) => c.name.toLowerCase()).join(", ");
+  const subjects = item.subjects || item.promptText;
+  return `${mood.charAt(0).toUpperCase() + mood.slice(1)} photograph. ${subjects} Lighting: ${lighting}. ${item.promptText} Color tones: ${colors}. ${item.composition.split(" · ")[0]} framing. ${ALLOWED_REALISM}. ${ANTI_AI}.`;
+}
+function fmtMidjourney(item: LibraryItem, mode: Mode) { return mode === "realism" ? fmtMidjourneyRealism(item) : fmtMidjourneyStyle(item); }
+function fmtFLUX(item: LibraryItem, mode: Mode) { return mode === "realism" ? fmtFLUXRealism(item) : fmtFLUXStyle(item); }
+function fmtSD(item: LibraryItem, mode: Mode) { return mode === "realism" ? fmtSDRealism(item) : fmtSDStyle(item); }
+function fmtDALLE(item: LibraryItem, mode: Mode) { return mode === "realism" ? fmtDALLERealism(item) : fmtDALLEStyle(item); }
+function fmtGemini(item: LibraryItem, mode: Mode) { return mode === "realism" ? fmtGeminiRealism(item) : fmtGeminiStyle(item); }
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export function StyleModal({
   item, onClose, onToast, onSave, isSaved, onPrev, onNext, hasPrev, hasNext,
 }: {
@@ -24,16 +109,16 @@ export function StyleModal({
   hasPrev: boolean;
   hasNext: boolean;
 }) {
-  const [tab, setTab] = useState<"structured" | "tokens" | "flags">("structured");
+  const mode: Mode = item.subjects ? "realism" : "style";
+  const [tab, setTab] = useState<"structured" | "tokens" | "midjourney" | "flux" | "dalle" | "gemini" | "sd">("structured");
   const [body, setBody] = useState(item.promptText);
-  const [flagsText, setFlagsText] = useState(item.flags);
   const [editing, setEditing] = useState(false);
+  const [fullModal, setFullModal] = useState<{ title: string; text: string } | null>(null);
   const [entered, setEntered] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setBody(item.promptText);
-    setFlagsText(item.flags);
     setEditing(false);
     setTab("structured");
     if (panelRef.current) panelRef.current.scrollTop = 0;
@@ -48,200 +133,349 @@ export function StyleModal({
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowLeft" && hasPrev) onPrev();
-      else if (e.key === "ArrowRight" && hasNext) onNext();
+      if (e.key === "Escape") { if (fullModal) { setFullModal(null); } else { onClose(); } }
+      else if (e.key === "ArrowLeft" && hasPrev && !fullModal) onPrev();
+      else if (e.key === "ArrowRight" && hasNext && !fullModal) onNext();
     };
     window.addEventListener("keydown", onKey);
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
-  }, [hasPrev, hasNext, onClose, onPrev, onNext]);
+  }, [hasPrev, hasNext, onClose, onPrev, onNext, fullModal]);
 
-  const chips = useMemo(() => ([
+  const TABS = [
+    { id: "structured" as const, lbl: "Analysis", Icon: ListDashes },
+    { id: "tokens" as const, lbl: "Tokens", Icon: Tag },
+    { id: "midjourney" as const, lbl: "Midjourney", Icon: TerminalWindow },
+    { id: "flux" as const, lbl: "FLUX", Icon: TerminalWindow },
+    { id: "dalle" as const, lbl: "ChatGPT / DALL-E", Icon: TerminalWindow },
+    { id: "gemini" as const, lbl: "Gemini", Icon: TerminalWindow },
+    { id: "sd" as const, lbl: "Stable Diffusion", Icon: TerminalWindow },
+  ];
+
+  const chips = [
     { group: "lighting", text: item.lighting.split(" · ")[0].toLowerCase() },
-    { group: "lighting", text: "soft falloff" },
     { group: "composition", text: item.composition.split(" · ")[0].toLowerCase() },
-    { group: "palette", text: "warm walnut + cream" },
-    { group: "palette", text: "single accent" },
     { group: "mood", text: item.mood.split(" · ")[0].toLowerCase() },
-    { group: "texture", text: "35mm grain" },
-    { group: "lens", text: "medium format, 80mm" },
-  ]), [item.id]);
-
-  const copyPrompt = () => {
-    const text = tab === "flags" ? `${body} ${flagsText}` : body;
-    navigator.clipboard?.writeText(text);
-    onToast(`Prompt copied · ${text.length} chars`);
-  };
+    { group: "texture", text: item.texture.split(" · ")[0].toLowerCase() },
+    ...item.palette.map((c) => ({ group: "palette", text: c.name.toLowerCase() })),
+  ];
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed", inset: 0, zIndex: 200,
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "48px 32px",
-        background: entered ? "rgba(20,14,10,0.55)" : "rgba(20,14,10,0)",
-        backdropFilter: entered ? "blur(14px) saturate(0.8)" : "blur(0px)",
-        transition: "background 320ms var(--ease-out), backdrop-filter 320ms var(--ease-out)",
-      }}
-    >
-      {hasPrev && (
-        <button onClick={(e) => { e.stopPropagation(); onPrev(); }} className="modal-nav" style={{ left: 18 }} aria-label="Previous">
-          <ArrowLeft weight="thin" size={20} />
-        </button>
-      )}
-      {hasNext && (
-        <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="modal-nav" style={{ right: 18 }} aria-label="Next">
-          <ArrowRight weight="thin" size={20} />
-        </button>
-      )}
-
+    <>
       <div
-        ref={panelRef}
-        onClick={(e) => e.stopPropagation()}
+        onClick={onClose}
         style={{
-          width: "min(1180px, 100%)", maxHeight: "calc(100vh - 96px)",
-          background: "color-mix(in oklch, var(--paper) 88%, transparent)",
-          backdropFilter: "blur(28px) saturate(1.05)",
-          border: "1px solid color-mix(in oklch, var(--paper) 50%, var(--rule-strong))",
-          borderRadius: 14,
-          boxShadow: "0 40px 80px -20px rgba(20,14,10,0.55), 0 4px 12px rgba(20,14,10,0.15)",
-          overflow: "auto",
-          opacity: entered ? 1 : 0,
-          transform: entered ? "translateY(0) scale(1)" : "translateY(16px) scale(0.985)",
-          transition: "opacity 360ms var(--ease-out), transform 380ms cubic-bezier(0.22, 1, 0.36, 1)",
+          position: "fixed", inset: 0, zIndex: 200,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          padding: "48px 32px",
+          background: entered ? "rgba(20,14,10,0.55)" : "rgba(20,14,10,0)",
+          backdropFilter: entered ? "blur(14px) saturate(0.8)" : "blur(0px)",
+          transition: "background 320ms var(--ease-out), backdrop-filter 320ms var(--ease-out)",
         }}
       >
-        <div style={{
-          position: "sticky", top: 0, zIndex: 5,
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "16px 22px",
-          background: "color-mix(in oklch, var(--paper) 70%, transparent)",
-          backdropFilter: "blur(20px)", borderBottom: "1px solid color-mix(in oklch, var(--rule) 60%, transparent)",
-        }}>
-          <div className="meta-mono" style={{ color: "var(--fg-mute)", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--terracotta)" }} />
-            <span>VELLUM · {item.board.toLowerCase()}</span>
-            <span style={{ color: "var(--fg-faint)" }}>·</span>
-            <span>{item.date.toLowerCase()}</span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <button onClick={onSave} title={isSaved ? "Saved" : "Save"} style={ICON_BTN}>
-              <BookmarkSimple weight={isSaved ? "fill" : "thin"} size={16} color={isSaved ? "var(--terracotta)" : undefined} />
-            </button>
-            <button title="Export" style={ICON_BTN}><Export weight="thin" size={16} /></button>
-            <span style={{ width: 1, height: 18, background: "var(--rule)", margin: "0 6px" }} />
-            <button onClick={onClose} aria-label="Close" style={ICON_BTN}><X weight="thin" size={16} /></button>
-          </div>
-        </div>
+        {hasPrev && (
+          <button onClick={(e) => { e.stopPropagation(); onPrev(); }} className="modal-nav" style={{ left: 18 }} aria-label="Previous">
+            <ArrowLeft weight="thin" size={20} />
+          </button>
+        )}
+        {hasNext && (
+          <button onClick={(e) => { e.stopPropagation(); onNext(); }} className="modal-nav" style={{ right: 18 }} aria-label="Next">
+            <ArrowRight weight="thin" size={20} />
+          </button>
+        )}
 
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.05fr)", gap: 0 }}>
-          <div style={{ padding: 28, borderRight: "1px solid color-mix(in oklch, var(--rule) 60%, transparent)" }}>
-            <div style={{ aspectRatio: "4 / 5", borderRadius: 6, overflow: "hidden", background: "var(--linen)", boxShadow: "0 8px 24px -8px rgba(20,14,10,0.25)" }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={item.image} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <div
+          ref={panelRef}
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            width: "min(1180px, 100%)", maxHeight: "calc(100vh - 96px)",
+            background: "color-mix(in oklch, var(--paper) 88%, transparent)",
+            backdropFilter: "blur(28px) saturate(1.05)",
+            border: "1px solid color-mix(in oklch, var(--paper) 50%, var(--rule-strong))",
+            borderRadius: 14,
+            boxShadow: "0 40px 80px -20px rgba(20,14,10,0.55), 0 4px 12px rgba(20,14,10,0.15)",
+            overflow: "auto",
+            opacity: entered ? 1 : 0,
+            transform: entered ? "translateY(0) scale(1)" : "translateY(16px) scale(0.985)",
+            transition: "opacity 360ms var(--ease-out), transform 380ms cubic-bezier(0.22, 1, 0.36, 1)",
+          }}
+        >
+          {/* Sticky header */}
+          <div style={{
+            position: "sticky", top: 0, zIndex: 5,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "16px 22px",
+            background: "color-mix(in oklch, var(--paper) 70%, transparent)",
+            backdropFilter: "blur(20px)", borderBottom: "1px solid color-mix(in oklch, var(--rule) 60%, transparent)",
+          }}>
+            <div className="meta-mono" style={{ color: "var(--fg-mute)", display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--terracotta)" }} />
+              <span>VELLUM · {item.board.toLowerCase()}</span>
+              <span style={{ color: "var(--fg-faint)" }}>·</span>
+              <span>{item.date.toLowerCase()}</span>
+              <span style={{ color: "var(--fg-faint)" }}>·</span>
+              <span style={{
+                fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.08em",
+                padding: "2px 7px", borderRadius: "var(--r-pill)",
+                background: mode === "realism" ? "color-mix(in oklch, var(--terracotta) 12%, transparent)" : "var(--linen)",
+                color: mode === "realism" ? "var(--terracotta)" : "var(--stone)",
+                border: `1px solid ${mode === "realism" ? "color-mix(in oklch, var(--terracotta) 30%, transparent)" : "var(--rule)"}`,
+              }}>
+                {mode === "realism" ? "PHOTO FIDELITY" : "VISUAL STYLE"}
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button onClick={onSave} title={isSaved ? "Saved" : "Save"} style={ICON_BTN}>
+                <BookmarkSimple weight={isSaved ? "fill" : "thin"} size={16} color={isSaved ? "var(--terracotta)" : undefined} />
+              </button>
+              <button title="Export" style={ICON_BTN}><Export weight="thin" size={16} /></button>
+              <span style={{ width: 1, height: 18, background: "var(--rule)", margin: "0 6px" }} />
+              <button onClick={onClose} aria-label="Close" style={ICON_BTN}><X weight="thin" size={16} /></button>
             </div>
           </div>
 
-          <div style={{ padding: 28, display: "flex", flexDirection: "column", gap: 22 }}>
-            <div>
-              <div className="meta-mono" style={{ color: "var(--terracotta)", letterSpacing: "0.16em", textTransform: "uppercase", fontSize: 10 }}>Analysis</div>
-              <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(34px, 3.4vw, 46px)", fontWeight: 520, letterSpacing: "-0.025em", lineHeight: 1.0, color: "var(--ink)", marginTop: 6, fontVariationSettings: '"opsz" 84' }}>
-                {item.title}<span style={{ color: "var(--terracotta)" }}>.</span>
-              </h2>
-              <p style={{ fontFamily: "var(--font-accent)", fontStyle: "italic", fontWeight: 450, fontSize: 17, color: "var(--walnut)", marginTop: 10, lineHeight: 1.45 }}>
-                &ldquo;{item.italic}.&rdquo;
-              </p>
-            </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18, rowGap: 16 }}>
-              {[{ label: "Mood", v: item.mood }, { label: "Lighting", v: item.lighting }, { label: "Composition", v: item.composition }, { label: "Texture", v: item.texture }].map((f) => (
-                <div key={f.label}>
-                  <div className="meta-mono" style={{ color: "var(--fg-mute)", letterSpacing: "0.16em", textTransform: "uppercase", fontSize: 10, marginBottom: 4 }}>{f.label}</div>
-                  <div style={{ fontSize: 13.5, color: "var(--walnut)", lineHeight: 1.5 }}>{f.v}</div>
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <div className="meta-mono" style={{ color: "var(--fg-mute)", letterSpacing: "0.16em", textTransform: "uppercase", marginBottom: 8, fontSize: 10 }}>Palette</div>
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${item.palette.length}, 1fr)`, gap: 0, borderRadius: 4, overflow: "hidden" }}>
+          {/* Two-column body */}
+          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.6fr)", gap: 0 }}>
+            {/* Left: image + palette strip */}
+            <div style={{ padding: 28, borderRight: "1px solid color-mix(in oklch, var(--rule) 60%, transparent)" }}>
+              <div style={{ aspectRatio: "4 / 5", borderRadius: 6, overflow: "hidden", background: "var(--linen)", boxShadow: "0 8px 24px -8px rgba(20,14,10,0.25)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={item.image} alt={item.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+              <div style={{ marginTop: 12, display: "flex", gap: 2 }}>
                 {item.palette.map((c, i) => (
-                  <button key={i} onClick={() => { navigator.clipboard?.writeText(c.hex); onToast(`${c.hex} copied`); }} title={`${c.name} · ${c.hex}`} style={{ background: c.hex, height: 36, cursor: "copy", transition: "transform 200ms var(--ease-out)" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.transform = "scaleY(1.12)")}
+                  <button key={i} onClick={() => { navigator.clipboard?.writeText(c.hex); onToast(`${c.hex} copied`); }} title={`${c.name} · ${c.hex}`}
+                    style={{ flex: 1, height: 8, background: c.hex, cursor: "copy", borderRadius: 2, transition: "transform 200ms var(--ease-out)" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.transform = "scaleY(1.3)")}
                     onMouseLeave={(e) => (e.currentTarget.style.transform = "none")}
                   />
                 ))}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: `repeat(${item.palette.length}, 1fr)`, gap: 0, marginTop: 6 }}>
+              <div style={{ marginTop: 6, display: "grid", gridTemplateColumns: `repeat(${item.palette.length}, 1fr)` }}>
                 {item.palette.map((c, i) => (
-                  <div key={i} className="meta-mono" style={{ color: "var(--fg-mute)", fontSize: 10 }}>{c.hex.toUpperCase()}</div>
+                  <div key={i} className="meta-mono" style={{ color: "var(--fg-mute)", fontSize: 9 }}>{c.hex.toUpperCase()}</div>
                 ))}
               </div>
             </div>
 
-            <div style={{ background: "color-mix(in oklch, var(--chalk) 70%, transparent)", border: "1px solid color-mix(in oklch, var(--rule) 70%, transparent)", borderRadius: 8, overflow: "hidden" }}>
-              <div style={{ display: "flex", padding: "8px 8px 0", borderBottom: "1px solid color-mix(in oklch, var(--rule) 60%, transparent)", gap: 0 }}>
-                {[{ id: "structured" as const, lbl: "Prompt" }, { id: "tokens" as const, lbl: "Tokens" }, { id: "flags" as const, lbl: "Flags" }].map((t) => (
-                  <button key={t.id} onClick={() => setTab(t.id)} style={{ padding: "9px 14px", fontSize: 12, fontWeight: tab === t.id ? 600 : 500, color: tab === t.id ? "var(--ink)" : "var(--fg-mute)", borderBottom: tab === t.id ? "1px solid var(--ink)" : "1px solid transparent", marginBottom: -1, letterSpacing: "-0.005em" }}>
-                    {t.lbl}
-                  </button>
-                ))}
-                <div style={{ flex: 1 }} />
-                <button onClick={() => setEditing(!editing)} className="meta-mono" style={{ padding: "9px 8px", color: editing ? "var(--terracotta)" : "var(--fg-mute)", fontSize: 10 }}>
-                  {editing ? <Check weight="thin" size={12} style={{ marginRight: 4, display: "inline" }} /> : <PencilSimple weight="thin" size={12} style={{ marginRight: 4, display: "inline" }} />}
-                  {editing ? "done" : "edit"}
-                </button>
+            {/* Right: title, facets, prompts */}
+            <div style={{ padding: 28, display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(28px, 2.8vw, 40px)", fontWeight: 520, letterSpacing: "-0.025em", lineHeight: 1.0, color: "var(--ink)", fontVariationSettings: '"opsz" 84' }}>
+                  {item.title}<span style={{ color: "var(--terracotta)" }}>.</span>
+                </h2>
+                <p style={{ fontFamily: "var(--font-accent)", fontStyle: "italic", fontWeight: 450, fontSize: 16, color: "var(--walnut)", marginTop: 8, lineHeight: 1.45 }}>
+                  &ldquo;{item.italic}.&rdquo;
+                </p>
               </div>
 
-              <div style={{ padding: 16 }}>
-                {tab === "structured" && (
-                  editing ? (
-                    <textarea value={body} onChange={(e) => setBody(e.target.value)} style={{ width: "100%", minHeight: 140, border: 0, outline: 0, fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.65, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 10, borderRadius: 4, resize: "vertical" }} />
-                  ) : (
-                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", maxHeight: 220, overflow: "auto" }}>
-                      <PromptHighlight text={body} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, rowGap: 14 }}>
+                {[{ label: "Mood", v: item.mood }, { label: "Lighting", v: item.lighting }, { label: "Composition", v: item.composition }, { label: "Texture", v: item.texture }].map((f) => (
+                  <div key={f.label}>
+                    <div className="meta-mono" style={{ color: "var(--fg-mute)", letterSpacing: "0.16em", textTransform: "uppercase", fontSize: 10, marginBottom: 4 }}>{f.label}</div>
+                    <div style={{ fontSize: 13, color: "var(--walnut)", lineHeight: 1.5, maxHeight: 60, overflowY: "auto" }}>{f.v}</div>
+                  </div>
+                ))}
+              </div>
+
+              {item.palette_descriptor && (
+                <p style={{ fontFamily: "var(--font-accent)", fontStyle: "italic", fontSize: 13.5, color: "var(--walnut)", lineHeight: 1.5 }}>
+                  {item.palette_descriptor}
+                </p>
+              )}
+
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {item.tags.map((t) => <span key={t} className="chip">#{t}</span>)}
+              </div>
+
+              {/* Prompt tabs */}
+              <div style={{ background: "color-mix(in oklch, var(--chalk) 70%, transparent)", border: "1px solid color-mix(in oklch, var(--rule) 70%, transparent)", borderRadius: 8, overflow: "hidden" }}>
+                <div style={{ display: "flex", padding: "8px 8px 0", borderBottom: "1px solid color-mix(in oklch, var(--rule) 60%, transparent)", gap: 0, overflowX: "auto", scrollbarWidth: "none" }}>
+                  {TABS.map((t) => (
+                    <button key={t.id} onClick={() => setTab(t.id)} style={{
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      padding: "8px 11px", fontSize: 11.5, fontWeight: tab === t.id ? 600 : 500,
+                      color: tab === t.id ? "var(--ink)" : "var(--fg-mute)",
+                      borderBottom: tab === t.id ? "1px solid var(--ink)" : "1px solid transparent",
+                      marginBottom: -1, whiteSpace: "nowrap",
+                    }}>
+                      <t.Icon weight="thin" size={13} />{t.lbl}
+                    </button>
+                  ))}
+                  <div style={{ flex: 1 }} />
+                  <button onClick={() => setEditing(!editing)} className="meta-mono" style={{ padding: "9px 8px", color: editing ? "var(--terracotta)" : "var(--fg-mute)", fontSize: 10 }}>
+                    {editing ? <Check weight="thin" size={12} style={{ marginRight: 4, display: "inline" }} /> : <PencilSimple weight="thin" size={12} style={{ marginRight: 4, display: "inline" }} />}
+                    {editing ? "done" : "edit"}
+                  </button>
+                </div>
+
+                <div style={{ padding: 14 }}>
+                  {tab === "structured" && (
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)" }}>
+                      <div style={{ maxHeight: 160, overflowY: "auto", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 10, borderRadius: 4 }}>
+                        {editing ? (
+                          <textarea value={body} onChange={(e) => setBody(e.target.value)} style={{ width: "100%", minHeight: 120, border: 0, outline: 0, fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "transparent", resize: "none" }} />
+                        ) : (
+                          <PromptHighlight text={body} />
+                        )}
+                      </div>
+                      <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                        <span className="meta-mono" style={{ color: "var(--fg-mute)" }}>{body.length} chars · {body.split(/\s+/).filter(Boolean).length} words</span>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button onClick={() => setFullModal({ title: "Analysis prompt", text: body })} style={INLINE}><ArrowsOut weight="thin" size={12} /> View full</button>
+                          <button onClick={() => { navigator.clipboard?.writeText(body); onToast(`Copied · ${body.length} chars`); }} style={INLINE}><Copy weight="thin" size={12} /> Copy</button>
+                        </div>
+                      </div>
                     </div>
-                  )
-                )}
-                {tab === "tokens" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 240, overflow: "auto" }}>
-                    {["lighting", "composition", "palette", "mood", "texture", "lens"].map((g) => (
-                      <div key={g} style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 12, alignItems: "start" }}>
-                        <div className="meta-mono" style={{ color: "var(--fg-mute)", letterSpacing: "0.16em", textTransform: "uppercase", fontSize: 10, paddingTop: 5 }}>{g}</div>
-                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                          {chips.filter((c) => c.group === g).map((c, i) => (
-                            <span key={i} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontFamily: "var(--font-mono)", fontSize: 11, padding: "3px 9px", borderRadius: 999, background: "var(--paper)", color: "var(--ink)", border: "1px solid var(--rule)" }}>
-                              {c.text}<X weight="thin" size={11} color="var(--fg-mute)" />
+                  )}
+
+                  {tab === "tokens" && (
+                    <div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 200, overflowY: "auto" }}>
+                        {["lighting", "composition", "mood", "texture", "palette"].map((g) => (
+                          <div key={g} style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: 10, alignItems: "start" }}>
+                            <div className="meta-mono" style={{ color: "var(--fg-mute)", letterSpacing: "0.16em", textTransform: "uppercase", fontSize: 10, paddingTop: 4 }}>{g}</div>
+                            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                              {chips.filter((c) => c.group === g).map((c, i) => (
+                                <span key={i} className="chip" style={{ background: "var(--paper)", color: "var(--ink)", border: "1px solid var(--rule)" }}>{c.text}</span>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                        <button onClick={() => { const j = chips.map((c) => c.text).join(", "); navigator.clipboard?.writeText(j); onToast("Tokens copied"); }} style={INLINE}><Copy weight="thin" size={12} /> Copy all</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {tab === "midjourney" && (() => {
+                    const { prompt, flags } = fmtMidjourney(item, mode);
+                    const full = `${prompt} ${flags}`;
+                    return (
+                      <div>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 160, overflowY: "auto" }}>
+                          <div style={{ color: "var(--fg-mute)", marginBottom: 6 }}># /imagine prompt</div>
+                          <div>{prompt}</div>
+                          <div style={{ marginTop: 8, color: "var(--terracotta)" }}>{flags}</div>
+                        </div>
+                        <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between" }}>
+                          <button onClick={() => setFullModal({ title: "# /imagine prompt · Midjourney", text: full })} style={INLINE}><ArrowsOut weight="thin" size={12} /> View full</button>
+                          <button onClick={() => { navigator.clipboard?.writeText(full); onToast(`Midjourney copied · ${full.length} chars`); }} style={INLINE}><Copy weight="thin" size={12} /> Copy</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {tab === "flux" && (() => {
+                    const prompt = fmtFLUX(item, mode);
+                    return (
+                      <div>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 160, overflowY: "auto" }}>
+                          <div style={{ color: "var(--fg-mute)", marginBottom: 6 }}># FLUX 2 / FLUX.1 [dev]</div>
+                          <div>{prompt}</div>
+                        </div>
+                        <div style={{ marginTop: 8, display: "flex", gap: 5, flexWrap: "wrap" }}>
+                          {item.palette.map((c) => (
+                            <span key={c.hex} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 8px", borderRadius: 4, background: "var(--chalk)", border: "1px solid var(--rule)", fontFamily: "var(--font-mono)", fontSize: 10 }}>
+                              <span style={{ width: 10, height: 10, borderRadius: 2, background: c.hex, display: "inline-block" }} />{c.hex}
                             </span>
                           ))}
                         </div>
+                        <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between" }}>
+                          <button onClick={() => setFullModal({ title: "# FLUX 2 / FLUX.1 [dev]", text: prompt })} style={INLINE}><ArrowsOut weight="thin" size={12} /> View full</button>
+                          <button onClick={() => { navigator.clipboard?.writeText(prompt); onToast(`FLUX copied · ${prompt.length} chars`); }} style={INLINE}><Copy weight="thin" size={12} /> Copy</button>
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-                {tab === "flags" && (
-                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4 }}>
-                    <div style={{ color: "var(--fg-mute)" }}># Midjourney v6.1</div>
-                    <div style={{ marginTop: 6 }}>{body}</div>
-                    <div style={{ marginTop: 8, color: "var(--terracotta)" }}>{flagsText}</div>
-                  </div>
-                )}
-              </div>
-            </div>
+                    );
+                  })()}
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "auto", paddingTop: 6 }}>
-              <span className="meta-mono" style={{ color: "var(--fg-mute)" }}>{body.length} chars · {body.split(/\s+/).length} words</span>
-              <button onClick={copyPrompt} style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "var(--ink)", color: "var(--chalk)", padding: "11px 18px", borderRadius: 4, fontSize: 13, fontWeight: 500, letterSpacing: "-0.005em", transition: "background 160ms var(--ease-out)", cursor: "pointer" }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--walnut)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "var(--ink)")}
-              >
-                <Copy weight="thin" size={15} /> Copy prompt
-              </button>
+                  {tab === "dalle" && (() => {
+                    const prompt = fmtDALLE(item, mode);
+                    return (
+                      <div>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 160, overflowY: "auto" }}>
+                          <div style={{ color: "var(--fg-mute)", marginBottom: 6 }}># ChatGPT / DALL-E 3</div>
+                          <div>{prompt}</div>
+                        </div>
+                        <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between" }}>
+                          <button onClick={() => setFullModal({ title: "# ChatGPT / DALL-E 3", text: prompt })} style={INLINE}><ArrowsOut weight="thin" size={12} /> View full</button>
+                          <button onClick={() => { navigator.clipboard?.writeText(prompt); onToast(`DALL-E copied · ${prompt.length} chars`); }} style={INLINE}><Copy weight="thin" size={12} /> Copy</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {tab === "gemini" && (() => {
+                    const prompt = fmtGemini(item, mode);
+                    return (
+                      <div>
+                        <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 160, overflowY: "auto" }}>
+                          <div style={{ color: "var(--fg-mute)", marginBottom: 6 }}># Gemini / Imagen 3</div>
+                          <div>{prompt}</div>
+                        </div>
+                        <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between" }}>
+                          <button onClick={() => setFullModal({ title: "# Gemini / Imagen 3", text: prompt })} style={INLINE}><ArrowsOut weight="thin" size={12} /> View full</button>
+                          <button onClick={() => { navigator.clipboard?.writeText(prompt); onToast(`Gemini copied · ${prompt.length} chars`); }} style={INLINE}><Copy weight="thin" size={12} /> Copy</button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {tab === "sd" && (() => {
+                    const { positive, negative } = fmtSD(item, mode);
+                    return (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div>
+                          <div className="meta-mono" style={{ color: "var(--fg-mute)", fontSize: 10, marginBottom: 6 }}>POSITIVE PROMPT</div>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 100, overflowY: "auto" }}>{positive}</div>
+                        </div>
+                        <div>
+                          <div className="meta-mono" style={{ color: "var(--fg-mute)", fontSize: 10, marginBottom: 6 }}>NEGATIVE PROMPT</div>
+                          <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--fg-mute)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 80, overflowY: "auto" }}>{negative}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: 6, justifyContent: "space-between", alignItems: "center" }}>
+                          <button onClick={() => setFullModal({ title: "# Stable Diffusion", text: `POSITIVE:\n${positive}\n\nNEGATIVE:\n${negative}` })} style={INLINE}><ArrowsOut weight="thin" size={12} /> View full</button>
+                          <div style={{ display: "flex", gap: 5 }}>
+                            <button onClick={() => { navigator.clipboard?.writeText(positive); onToast("Positive copied"); }} style={INLINE}><Copy weight="thin" size={12} /> Copy positive</button>
+                            <button onClick={() => { navigator.clipboard?.writeText(negative); onToast("Negative copied"); }} style={INLINE}><Copy weight="thin" size={12} /> Copy negative</button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Full text sub-modal */}
+      {fullModal && (
+        <div
+          onClick={() => setFullModal(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(34,26,20,0.48)", backdropFilter: "blur(6px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: "var(--chalk)", border: "1px solid var(--rule-soft)", borderRadius: "var(--r-lg)", width: "min(700px, 100%)", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "var(--shadow-3)" }}
+          >
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--rule-soft)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--terracotta)", letterSpacing: "0.1em" }}>{fullModal.title}</span>
+              <button onClick={() => setFullModal(null)} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid var(--rule)", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--fg-3)" }}>
+                <X weight="thin" size={14} />
+              </button>
+            </div>
+            <div style={{ padding: "20px 24px", overflowY: "auto", flex: 1, fontFamily: "var(--font-mono)", fontSize: 13, lineHeight: 1.75, color: "var(--walnut)", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+              {fullModal.text}
+            </div>
+            <div style={{ padding: "14px 24px", borderTop: "1px solid var(--rule-soft)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span className="meta-mono" style={{ color: "var(--fg-mute)" }}>{fullModal.text.length} chars · {fullModal.text.split(/\s+/).filter(Boolean).length} words</span>
+              <button onClick={() => { navigator.clipboard?.writeText(fullModal.text); onToast(`Copied · ${fullModal.text.length} chars`); }} style={INLINE}><Copy weight="thin" size={13} /> Copy all</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -1,22 +1,26 @@
 "use client";
 import { useState } from "react";
-import { MagnifyingGlass, Plus, SquaresFour, ListBullets, BookmarkSimple } from "@phosphor-icons/react";
+import { MagnifyingGlass, Plus, SquaresFour, ListBullets, BookmarkSimple, ArrowLeft } from "@phosphor-icons/react";
 import { Eyebrow } from "@/components/ui/Eyebrow";
 import { LIBRARY, BOARDS, LibraryItem } from "@/lib/data";
 
 export function LibraryScreen({
-  onNavigate, savedSet, onToggleSave, onOpenModal,
+  onNavigate, savedSet, onToggleSave, onOpenModal, extraItems = [], hasLastAnalysis = false, onBackToResults,
 }: {
   onNavigate: (s: "landing") => void;
   savedSet: Set<string>;
   onToggleSave: (id: string) => void;
   onOpenModal: (id: string) => void;
+  extraItems?: LibraryItem[];
+  hasLastAnalysis?: boolean;
+  onBackToResults?: () => void;
 }) {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [board, setBoard] = useState("all");
   const [query, setQuery] = useState("");
 
-  const filtered = LIBRARY.filter((it) => {
+  const allItems = [...extraItems, ...LIBRARY];
+  const filtered = allItems.filter((it) => {
     if (board !== "all" && !it.board.toLowerCase().includes(board.split("-")[0])) return false;
     if (query && !`${it.title} ${it.tags.join(" ")} ${it.board}`.toLowerCase().includes(query.toLowerCase())) return false;
     return true;
@@ -29,7 +33,7 @@ export function LibraryScreen({
           <div>
             <Eyebrow num="02">Your library</Eyebrow>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(40px, 5vw, 64px)", letterSpacing: "-0.025em", lineHeight: 1.0, color: "var(--ink)", marginTop: 10 }}>
-              {LIBRARY.length} reads,
+              {allItems.length} reads,
               <span style={{ fontFamily: "var(--font-accent)", fontStyle: "italic", color: "var(--walnut)" }}> catalogued</span>.
             </h2>
           </div>
@@ -39,7 +43,12 @@ export function LibraryScreen({
               <input placeholder="Search analyses, tags, palettes…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ all: "unset", flex: 1, fontSize: 13 }} />
               <span className="meta-mono" style={{ color: "var(--fg-mute)" }}>⌘K</span>
             </div>
-            <button className="btn btn-ghost" onClick={() => onNavigate("landing")}>
+            {hasLastAnalysis && onBackToResults && (
+              <button className="btn btn-ghost" onClick={onBackToResults}>
+                <ArrowLeft weight="thin" size={16} />Last analysis
+              </button>
+            )}
+            <button className="btn btn-accent" onClick={() => onNavigate("landing")}>
               <Plus weight="thin" size={16} />New read
             </button>
           </div>
@@ -67,7 +76,7 @@ export function LibraryScreen({
                 </button>
               ))}
             </div>
-            <span className="meta-mono" style={{ color: "var(--fg-3)" }}>{filtered.length} / {LIBRARY.length} shown</span>
+            <span className="meta-mono" style={{ color: "var(--fg-3)" }}>{filtered.length} / {allItems.length} shown</span>
           </div>
         </div>
 

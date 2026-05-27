@@ -17,6 +17,7 @@ export interface LibraryItem {
   texture: string;
   palette_descriptor: string;
   promptText: string;
+  subjects: string;
   flags: string;
   chars: number;
   date: string;
@@ -94,6 +95,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Walnut, cream, terracotta — a 90/10 neutral-to-accent split.",
     promptText:
       "A muted interior tableau bathed in soft late-afternoon light from camera-left. Walnut wood and warm cream walls anchor the composition; a single terracotta object draws the eye. The camera is held a quiet half-step back, mid-format on 35mm-equivalent film, eye-level. Restrained palette, subtle grain, no contrast push.",
+    subjects: "",
     flags: "--ar 4:5 --style raw --s 250",
     chars: 312,
     date: "Today · 14:32",
@@ -115,6 +117,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Bone, cocoa, and a single rust accent in the lip.",
     promptText:
       "A reserved fashion portrait in diffused window light, three-quarter framing cropped at the clavicle. Skin reads as warm camel against a bone backdrop; a single rust note appears in the lip. Low contrast, soft film bloom, no harsh shadows. 6x7 medium format, 80mm equivalent.",
+    subjects: "",
     flags: "--ar 4:5 --style raw --s 180",
     chars: 296,
     date: "Yesterday · 18:04",
@@ -136,6 +139,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Midnight blue undertone interrupted by lantern honey.",
     promptText:
       "A single warm lantern lights a narrow night corridor from above; a figure stands slightly off-center, half-turned. Midnight blue undertones throughout, the lantern punching a small honey glow with light bloom. Wet floor reflects the source. 35mm cinematic, anamorphic flare, romantic and suspended.",
+    subjects: "",
     flags: "--ar 21:9 --style cinematic --s 350",
     chars: 318,
     date: "Mar 14 · 09:11",
@@ -157,6 +161,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Carbon and chalk separated only by a single sage strip.",
     promptText:
       "A concrete cloister photographed from the cardinal axis with strong oblique skylight cutting diagonally across bush-hammered walls. Tadao-Ando minimalism, near-silent palette of carbon and chalk, a single sliver of sage foliage just visible through the opening. Dust motes catch the shaft.",
+    subjects: "",
     flags: "--ar 3:2 --style architectural --s 200",
     chars: 304,
     date: "Mar 12 · 21:48",
@@ -178,6 +183,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Chardin's brass-and-parchment study with one sienna note.",
     promptText:
       "A small still life of brass and pear on a worn oak table, lit by a single high window at dusk with deep falloff to black. Painterly soft focus, asymmetric composition at painter's eye-level. Brass patina catches the last light; one sienna fold of cloth completes the palette.",
+    subjects: "",
     flags: "--ar 4:5 --style painterly --s 220",
     chars: 290,
     date: "Mar 09 · 17:22",
@@ -199,6 +205,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Earth and sandstone under sun-bleached sky.",
     promptText:
       "A wide desert crossing under flat overhead sun, the road bisecting the lower third and a small distant figure on the right horizon. Sternfeld-style documentary, earth and sandstone tones beneath a sun-bleached sky, heat shimmer above the asphalt. 8x10 view camera feel, no drama.",
+    subjects: "",
     flags: "--ar 16:9 --style documentary --s 160",
     chars: 312,
     date: "Mar 04 · 11:00",
@@ -220,6 +227,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Stone wash and chalk, no accent.",
     promptText:
       "A spare room in midday white light: lime plaster walls, a single linen-covered chair centered against vast negative space, bare wood floor beneath. Stone wash and chalk palette throughout, no accent colour. Overhead diffuse light bounced through a tall window. Vervoordt-quiet.",
+    subjects: "",
     flags: "--ar 3:2 --style raw --s 140",
     chars: 286,
     date: "Feb 28 · 08:14",
@@ -241,6 +249,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Bone and ink with a deep rust shadow.",
     promptText:
       "A frontal Avedon-style portrait on white seamless, a single hard strobe raking from the side with no fill, throwing half the face into deep rust shadow. Tight crop, eye-line direct, no grain — clinical and graphic. Subject is still, expression resolved.",
+    subjects: "",
     flags: "--ar 4:5 --style raw --s 280",
     chars: 274,
     date: "Feb 22 · 19:35",
@@ -262,6 +271,7 @@ export const LIBRARY: LibraryItem[] = [
     palette_descriptor: "Aged oak with warm cream, terracotta in the throw.",
     promptText:
       "A reading nook in a Belgian house at evening: a single brass lamp throws a warm pool of light over an aged leather chair off-centered in the frame. Walnut wood, warm cream walls, a terracotta wool throw. Foreground table catches the edge. Eye-level, restrained, inhabited.",
+    subjects: "",
     flags: "--ar 4:5 --style raw --s 220",
     chars: 298,
     date: "Feb 16 · 22:10",

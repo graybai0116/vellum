@@ -1,8 +1,9 @@
 "use client";
 import { useRef, useState } from "react";
-import { ArrowUp } from "@phosphor-icons/react";
+import { ArrowUp, PaintBrush, Camera } from "@phosphor-icons/react";
 import { InlinePhotoSwap } from "@/components/ui/InlinePhotoSwap";
-import { LibraryItem } from "@/lib/data";
+
+export type AnalysisMode = "style" | "realism";
 
 interface UploadedImage {
   name: string;
@@ -12,17 +13,18 @@ interface UploadedImage {
 export function LandingScreen({
   onUpload, onNavigate,
 }: {
-  onUpload: (img: UploadedImage) => void;
+  onUpload: (img: UploadedImage, mode: AnalysisMode) => void;
   onNavigate: (s: "results-sample") => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
+  const [mode, setMode] = useState<AnalysisMode>("style");
 
   const handleFiles = (files: FileList | null) => {
     const f = files?.[0];
     if (!f || !f.type.startsWith("image/")) return;
     const reader = new FileReader();
-    reader.onload = (e) => onUpload({ name: f.name, dataUrl: e.target?.result as string });
+    reader.onload = (e) => onUpload({ name: f.name, dataUrl: e.target?.result as string }, mode);
     reader.readAsDataURL(f);
   };
 
@@ -65,6 +67,29 @@ export function LandingScreen({
               </li>
             ))}
           </ol>
+        </div>
+
+        {/* Mode toggle */}
+        <div style={{ display: "flex", background: "var(--bg-sunken)", borderRadius: "var(--r-pill)", padding: 3, gap: 2 }}>
+          {([
+            { id: "style" as const, label: "Visual Style", sub: "Art · Editorial · Cinematic", Icon: PaintBrush },
+            { id: "realism" as const, label: "Photo Fidelity", sub: "Portrait · Candid · Realism", Icon: Camera },
+          ]).map(({ id, label, sub, Icon }) => (
+            <button key={id} onClick={() => setMode(id)} style={{
+              display: "flex", alignItems: "center", gap: 10,
+              padding: "10px 20px", borderRadius: "var(--r-pill)",
+              background: mode === id ? "var(--chalk)" : "transparent",
+              boxShadow: mode === id ? "var(--shadow-1)" : "none",
+              border: mode === id ? "1px solid var(--rule)" : "1px solid transparent",
+              transition: "all 180ms var(--ease-out)", cursor: "pointer",
+            }}>
+              <Icon weight={mode === id ? "fill" : "thin"} size={16} color={mode === id ? "var(--terracotta)" : "var(--fg-mute)"} />
+              <div style={{ textAlign: "left" }}>
+                <div style={{ fontSize: 13, fontWeight: 500, color: mode === id ? "var(--ink)" : "var(--fg-3)", lineHeight: 1.2 }}>{label}</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: mode === id ? "var(--stone)" : "var(--fg-mute)", letterSpacing: "0.04em", marginTop: 2 }}>{sub}</div>
+              </div>
+            </button>
+          ))}
         </div>
 
         <div

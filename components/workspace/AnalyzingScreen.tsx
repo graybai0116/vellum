@@ -13,12 +13,14 @@ const TOKEN_LIST = [
 ];
 
 export function AnalyzingScreen({
-  image, onDone,
+  image, onDone, ready,
 }: {
   image: { src: string; name: string };
   onDone: () => void;
+  ready?: boolean;
 }) {
   const [tokens, setTokens] = useState<string[]>([]);
+  const [animDone, setAnimDone] = useState(false);
 
   useEffect(() => {
     let i = 0;
@@ -27,9 +29,14 @@ export function AnalyzingScreen({
       setTokens((prev) => [...prev, TOKEN_LIST[i]]);
       i++;
     }, 220);
-    const t2 = setTimeout(onDone, 3200);
+    const t2 = setTimeout(() => setAnimDone(true), 3200);
     return () => { clearTimeout(t2); clearInterval(iv); };
-  }, [onDone]);
+  }, []);
+
+  // Call onDone when animation finished AND API ready (or no API needed)
+  useEffect(() => {
+    if (animDone && ready !== false) onDone();
+  }, [animDone, ready, onDone]);
 
   return (
     <div className="screen fade-enter">
