@@ -5,13 +5,14 @@ import { Eyebrow } from "@/components/ui/Eyebrow";
 import { LIBRARY, BOARDS, LibraryItem } from "@/lib/data";
 
 export function LibraryScreen({
-  onNavigate, savedSet, onToggleSave, onOpenModal, extraItems = [], hasLastAnalysis = false, onBackToResults,
+  onNavigate, savedSet, onToggleSave, onOpenModal, extraItems = [], historyItems = [], hasLastAnalysis = false, onBackToResults,
 }: {
   onNavigate: (s: "landing") => void;
   savedSet: Set<string>;
   onToggleSave: (id: string) => void;
   onOpenModal: (id: string) => void;
   extraItems?: LibraryItem[];
+  historyItems?: LibraryItem[];
   hasLastAnalysis?: boolean;
   onBackToResults?: () => void;
 }) {
@@ -41,7 +42,6 @@ export function LibraryScreen({
             <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 14px", background: "var(--bg-sunken)", borderRadius: "var(--r-sm)", minWidth: 260 }}>
               <MagnifyingGlass weight="thin" size={16} color="var(--fg-mute)" />
               <input placeholder="Search analyses, tags, palettes…" value={query} onChange={(e) => setQuery(e.target.value)} style={{ all: "unset", flex: 1, fontSize: 13 }} />
-              <span className="meta-mono" style={{ color: "var(--fg-mute)" }}>⌘K</span>
             </div>
             {hasLastAnalysis && onBackToResults && (
               <button className="btn btn-ghost" onClick={onBackToResults}>

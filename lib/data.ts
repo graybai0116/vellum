@@ -16,6 +16,7 @@ export interface LibraryItem {
   composition: string;
   texture: string;
   palette_descriptor: string;
+  art_references: string;
   promptText: string;
   subjects: string;
   flags: string;
@@ -93,6 +94,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Centered · Negative space right · Eye-level",
     texture: "Mid-format film grain · Soft falloff",
     palette_descriptor: "Walnut, cream, terracotta — a 90/10 neutral-to-accent split.",
+    art_references: "Editorial Photography · 1990s–2000s · AD / Architectural Digest style, Oberto Gili influence, warm-grain interior reportage",
     promptText:
       "A muted interior tableau bathed in soft late-afternoon light from camera-left. Walnut wood and warm cream walls anchor the composition; a single terracotta object draws the eye. The camera is held a quiet half-step back, mid-format on 35mm-equivalent film, eye-level. Restrained palette, subtle grain, no contrast push.",
     subjects: "",
@@ -115,6 +117,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Three-quarter · Crop at clavicle · Negative left",
     texture: "Smooth grain · Subtle film bloom",
     palette_descriptor: "Bone, cocoa, and a single rust accent in the lip.",
+    art_references: "Fashion Photography · 1990s–2000s · Peter Lindbergh influence, soft-light humanism, Helmut Newton restraint without severity",
     promptText:
       "A reserved fashion portrait in diffused window light, three-quarter framing cropped at the clavicle. Skin reads as warm camel against a bone backdrop; a single rust note appears in the lip. Low contrast, soft film bloom, no harsh shadows. 6x7 medium format, 80mm equivalent.",
     subjects: "",
@@ -137,6 +140,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Tight corridor · Leading lines · Off-center subject",
     texture: "Grain · Light bloom · Wet floor reflection",
     palette_descriptor: "Midnight blue undertone interrupted by lantern honey.",
+    art_references: "In-Camera Film · 1990s Hong Kong Cinema · Wong Kar-wai, Christopher Doyle, available-light expressionism, saturated neon against deep shadow",
     promptText:
       "A single warm lantern lights a narrow night corridor from above; a figure stands slightly off-center, half-turned. Midnight blue undertones throughout, the lantern punching a small honey glow with light bloom. Wet floor reflects the source. 35mm cinematic, anamorphic flare, romantic and suspended.",
     subjects: "",
@@ -159,6 +163,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Symmetric vanishing · Strong diagonals · Geometric",
     texture: "Bush-hammered concrete · Smooth plaster · Dust motes",
     palette_descriptor: "Carbon and chalk separated only by a single sage strip.",
+    art_references: "Architectural Photography · Contemporary · Tadao Ando minimalism, Julius Shulman influence, New Brutalism, light-as-material philosophy",
     promptText:
       "A concrete cloister photographed from the cardinal axis with strong oblique skylight cutting diagonally across bush-hammered walls. Tadao-Ando minimalism, near-silent palette of carbon and chalk, a single sliver of sage foliage just visible through the opening. Dust motes catch the shaft.",
     subjects: "",
@@ -181,6 +186,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Asymmetric · Tabletop · Painter's eye-level",
     texture: "Painterly · Soft focus on edges · Brass patina",
     palette_descriptor: "Chardin's brass-and-parchment study with one sienna note.",
+    art_references: "Dutch Golden Age Still Life · 17th century · Jean-Baptiste-Siméon Chardin, tenebrism, single-window chiaroscuro, tactile surface rendering",
     promptText:
       "A small still life of brass and pear on a worn oak table, lit by a single high window at dusk with deep falloff to black. Painterly soft focus, asymmetric composition at painter's eye-level. Brass patina catches the last light; one sienna fold of cloth completes the palette.",
     subjects: "",
@@ -203,6 +209,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Wide horizon · Rule-of-thirds road · Distant figure",
     texture: "Crisp sand grain · Heat shimmer · Dust",
     palette_descriptor: "Earth and sandstone under sun-bleached sky.",
+    art_references: "New Topographics · 1970s–1980s · Joel Sternfeld, Robert Adams, deadpan large-format documentary, 8×10 view camera, non-dramatic American vernacular landscape",
     promptText:
       "A wide desert crossing under flat overhead sun, the road bisecting the lower third and a small distant figure on the right horizon. Sternfeld-style documentary, earth and sandstone tones beneath a sun-bleached sky, heat shimmer above the asphalt. 8x10 view camera feel, no drama.",
     subjects: "",
@@ -225,6 +232,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Centered chair · Negative space dominant · Wide frame",
     texture: "Lime plaster · Linen weave · Bare wood",
     palette_descriptor: "Stone wash and chalk, no accent.",
+    art_references: "Wabi-Sabi Interior Photography · Contemporary · Axel Vervoordt, Pieter Porters influence, Belgian minimalism, imperfect-material philosophy",
     promptText:
       "A spare room in midday white light: lime plaster walls, a single linen-covered chair centered against vast negative space, bare wood floor beneath. Stone wash and chalk palette throughout, no accent colour. Overhead diffuse light bounced through a tall window. Vervoordt-quiet.",
     subjects: "",
@@ -247,6 +255,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Frontal · Tight · Eye-line",
     texture: "Sharp · No grain · Dust on lens",
     palette_descriptor: "Bone and ink with a deep rust shadow.",
+    art_references: "Studio Portrait Photography · 1960s–1980s · Richard Avedon, Irving Penn, white-seamless graphic reductionism, strobe-lit confrontational directness",
     promptText:
       "A frontal Avedon-style portrait on white seamless, a single hard strobe raking from the side with no fill, throwing half the face into deep rust shadow. Tight crop, eye-line direct, no grain — clinical and graphic. Subject is still, expression resolved.",
     subjects: "",
@@ -269,6 +278,7 @@ export const LIBRARY: LibraryItem[] = [
     composition: "Off-center chair · Foreground table · Eye-level",
     texture: "Wool throw · Aged leather · Hardwood",
     palette_descriptor: "Aged oak with warm cream, terracotta in the throw.",
+    art_references: "Atmospheric Interior Photography · Contemporary · Dries Otten, Paulina Arcklin influence, Belgian/Flemish domestic warmth, available lamplight reportage",
     promptText:
       "A reading nook in a Belgian house at evening: a single brass lamp throws a warm pool of light over an aged leather chair off-centered in the frame. Walnut wood, warm cream walls, a terracotta wool throw. Foreground table catches the edge. Eye-level, restrained, inhabited.",
     subjects: "",

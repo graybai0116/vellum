@@ -4,14 +4,15 @@ import { NextRequest, NextResponse } from "next/server";
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ─── Style Mode ────────────────────────────────────────────────────────────────
-const STYLE_SYSTEM = `You are a visual intelligence instrument. Extract only the visual language of an image — light physics, color, composition, texture, mood. Like a cinematographer's shot brief: precise, technical, evocative.
+const STYLE_SYSTEM = `You are a visual intelligence instrument. Extract only the visual language of an image — light physics, color, composition, texture, mood, and art-historical context. Like a cinematographer's shot brief crossed with a curator's note: precise, technical, evocative.
 
 Rules:
 - Never describe subjects or narrative — only how the image looks
 - Use vocabulary image generation models respond to: film stocks, f-stops, focal lengths, lighting rig names, photographer references
 - Always name primary AND secondary light sources and how they interact
 - Palette must be exactly 5 colors sampled from the actual image
-- Never use vague quality words like "beautiful", "stunning", "high quality"`;
+- Never use vague quality words like "beautiful", "stunning", "high quality"
+- For art_references: identify the artistic movement, historical period, and key stylistic techniques. If photographic, name the photographic genre, era, and key practitioners. Be specific (e.g. "Dutch Golden Age · 17th century · Vermeer-style window light, tenebrism" or "New Topographics · 1970s · Robert Adams, deadpan documentary, 8×10 view camera")`;
 
 const STYLE_PROMPT = `Analyze this image's visual language. Return ONLY a valid JSON object — no markdown, no explanation.
 
@@ -31,6 +32,7 @@ const STYLE_PROMPT = `Analyze this image's visual language. Return ONLY a valid 
   "composition": "Framing element · Subject placement · Depth",
   "texture": "Surface quality · Material · Film or sensor characteristic",
   "palette_descriptor": "One sentence on the color relationship and palette story",
+  "art_references": "Movement · Period · Key techniques and artist references (e.g. 'Impressionism · Late 19th century · Plein air, Monet-style color dissolution, broken brushwork' or 'Baroque · 17th century · Chiaroscuro, Caravaggio tenebrism, single candle source'). If photographic: genre · era · practitioners.",
   "subjects": "",
   "promptText": "2-3 sentences of pure visual language: palette, light physics, composition, texture. No subject matter. Style-transfer ready.",
   "flags": "--ar W:H --style raw --s NNN",
@@ -132,6 +134,7 @@ export async function POST(req: NextRequest) {
       composition: analysis.composition || "",
       texture: analysis.texture || "",
       palette_descriptor: analysis.palette_descriptor || "",
+      art_references: analysis.art_references || "",
       subjects: analysis.subjects || "",
       promptText: analysis.promptText || "",
       flags: analysis.flags || "--ar 4:5 --style raw --s 200",

@@ -122,8 +122,6 @@ export function LandingScreen({
               Drop a file
             </span>
             <span style={{ color: "var(--fg-faint)" }}>·</span>
-            <span>paste a URL with ⌘V</span>
-            <span style={{ color: "var(--fg-faint)" }}>·</span>
             <button
               onClick={(e) => { e.stopPropagation(); onNavigate("results-sample"); }}
               style={{ color: "var(--rust)", borderBottom: "1px solid color-mix(in oklch, var(--rust) 30%, transparent)", background: "none", border: "none", cursor: "pointer", font: "inherit" }}

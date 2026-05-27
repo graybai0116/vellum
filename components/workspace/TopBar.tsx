@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Mark } from "@/components/ui/Mark";
 
-type Screen = "landing" | "analyzing" | "results" | "library";
+type Screen = "landing" | "analyzing" | "results" | "library" | "history";
 
 export function TopBar({
   active, onNavigate,
@@ -28,6 +28,10 @@ export function TopBar({
           onClick={() => onNavigate("library")}
           className={`min-link${active === "library" ? " active" : ""}`}
         >Library</button>
+        <button
+          onClick={() => onNavigate("history")}
+          className={`min-link${active === "history" ? " active" : ""}`}
+        >History</button>
         <span className="topbar-divider" />
         <div className="avatar">CL</div>
       </div>
