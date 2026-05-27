@@ -40,8 +40,12 @@ export default function LandingPage() {
           <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 520, fontVariationSettings: '"opsz" 84', letterSpacing: "0.005em", color: "var(--ink)", lineHeight: 1 }}>VELLUM</span>
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 26, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--fg-3)" }}>
-          <Link href="/workspace?screen=library" style={{ transition: "color 160ms var(--ease-out)" }}>Library</Link>
-          <a href="#manifesto" style={{ transition: "color 160ms var(--ease-out)" }}>Manifesto</a>
+          <Link href="/workspace?screen=library" style={{ transition: "color 160ms var(--ease-out)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ink)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "")}>Library</Link>
+          <a href="#manifesto" style={{ transition: "color 160ms var(--ease-out)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--ink)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "")}>Manifesto</a>
           <Link href="/workspace" style={{ padding: "8px 16px", borderRadius: 4, background: "var(--ink)", color: "var(--chalk)", display: "inline-flex", alignItems: "center", gap: 6, transition: "background 160ms var(--ease-out)", textDecoration: "none" }}>
             Open workspace <ArrowRightIcon weight="thin" size={16} />
           </Link>
@@ -156,11 +160,44 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Before / After comparison */}
+      <section style={{ maxWidth: 1200, margin: "0 auto", padding: "0 40px 120px", position: "relative", zIndex: 1 }}>
+        <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: "var(--fg-mute)", textAlign: "center", marginBottom: 36, display: "flex", alignItems: "center", justifyContent: "center", gap: 14 }}>
+          <span style={{ flex: "0 0 60px", height: 1, background: "var(--rule)" }} />
+          Prompt in, image out
+          <span style={{ flex: "0 0 60px", height: 1, background: "var(--rule)" }} />
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 28px 1fr", gap: 0, alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ borderRadius: 6, overflow: "hidden", boxShadow: "var(--shadow-1)", aspectRatio: "4/3", background: "var(--linen)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/compare-original.jpg" alt="Original painting" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--fg-mute)" }}>Original</span>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "var(--stone)", fontFamily: "var(--font-mono)", fontSize: 22 }}>→</div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ borderRadius: 6, overflow: "hidden", boxShadow: "var(--shadow-1)", aspectRatio: "4/3", background: "var(--linen)" }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/compare-generated.png" alt="Generated with Vellum prompt" style={{ width: "100%", height: "100%", objectFit: "cover", objectPosition: "center top", display: "block" }} />
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--fg-mute)" }}>Generated · ChatGPT with Vellum prompt</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <footer id="manifesto" style={{ borderTop: "1px solid var(--rule-soft)", padding: "32px 40px", display: "flex", justifyContent: "space-between", alignItems: "center", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-mute)", letterSpacing: "0.04em", position: "relative", zIndex: 1 }}>
         <div>VELLUM · Visual language, extracted</div>
         <div style={{ display: "flex", gap: 22 }}>
           <Link href="/workspace" style={{ transition: "color 160ms" }}>Workspace</Link>
-          <Link href="/workspace" style={{ transition: "color 160ms" }}>Library</Link>
+          <Link href="/workspace?screen=library" style={{ transition: "color 160ms" }}>Library</Link>
           <a href="mailto:hello@vellum.art" style={{ transition: "color 160ms" }}>hello@vellum.art</a>
         </div>
         <div>© 2026 — v 0.4</div>
