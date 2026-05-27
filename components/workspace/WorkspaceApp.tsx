@@ -1,15 +1,17 @@
 "use client";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { X } from "@phosphor-icons/react";
 import { LIBRARY, LibraryItem } from "@/lib/data";
 import { TopBar } from "./TopBar";
 import { LandingScreen, AnalysisMode } from "./LandingScreen";
 import { AnalyzingScreen } from "./AnalyzingScreen";
 import { ResultsScreen } from "./ResultsScreen";
 import { LibraryScreen } from "./LibraryScreen";
+import { HistoryScreen } from "./HistoryScreen";
 import { StyleModal } from "./StyleModal";
 import { Toast } from "@/components/ui/Toast";
 
-type Screen = "landing" | "analyzing" | "results" | "library";
+type Screen = "landing" | "analyzing" | "results" | "library" | "history";
 interface UploadedImage { src: string; name: string; }
 
 // Resize image to max 1536px before sending to API
@@ -29,25 +31,34 @@ function resizeImage(dataUrl: string, maxPx = 1536): Promise<string> {
   });
 }
 
-export function WorkspaceApp() {
-  const [screen, setScreen] = useState<Screen>("landing");
+export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Screen }) {
+  const [screen, setScreen] = useState<Screen>(initialScreen);
   const [currentItemId, setCurrentItemId] = useState(LIBRARY[0].id);
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [analyzingImage, setAnalyzingImage] = useState<UploadedImage | null>(null);
   const [analysisResult, setAnalysisResult] = useState<LibraryItem | null>(null);
   const [analysisReady, setAnalysisReady] = useState(false);
+  const [analysisError, setAnalysisError] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("style");
   const [toastMsg, setToastMsg] = useState("");
-  const [savedSet, setSavedSet] = useState<Set<string>>(
-    new Set(LIBRARY.filter((x) => x.saved).map((x) => x.id))
-  );
-  const [savedUploads, setSavedUploads] = useState<LibraryItem[]>([]);
-  // Tracks all analyzed items by id so toggleSave can find them without prop drilling
+  const [savedSet, setSavedSet] = useState<Set<string>>(() => {
+    try { const s = localStorage.getItem("vellum_saved"); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
+  });
+  const [savedUploads, setSavedUploads] = useState<LibraryItem[]>(() => {
+    try { const s = localStorage.getItem("vellum_uploads"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [analysisHistory, setAnalysisHistory] = useState<LibraryItem[]>(() => {
+    try { const s = localStorage.getItem("vellum_history"); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const [confirmUnsaveId, setConfirmUnsaveId] = useState<string | null>(null);
   const analyzedItemsRef = useRef<Map<string, LibraryItem>>(new Map());
   const [modalItemId, setModalItemId] = useState<string | null>(null);
 
   const navigate = (s: Screen | "results-sample" | "back-to-results", id?: string) => {
     if (s === "results" && id) {
+      const allItems = [...analysisHistory, ...savedUploads, ...LIBRARY];
+      const found = allItems.find((x) => x.id === id);
+      if (found) setAnalysisMode(found.subjects ? "realism" : "style");
       setCurrentItemId(id); setUploadedImage(null); setAnalysisResult(null); setScreen("results");
     } else if (s === "results-sample") {
       const sample = LIBRARY[0];
@@ -72,6 +83,7 @@ export function WorkspaceApp() {
     setAnalyzingImage({ src: resized, name });
     setAnalysisResult(null);
     setAnalysisReady(false);
+    setAnalysisError(false);
     setAnalysisMode(mode);
     setScreen("analyzing");
 
@@ -81,9 +93,21 @@ export function WorkspaceApp() {
       body: JSON.stringify({ imageDataUrl: resized, imageName: name, mode }),
     })
       .then((r) => r.json())
-      .then((result) => { analyzedItemsRef.current.set(result.id, result); setAnalysisResult(result); setAnalysisReady(true); })
-      .catch(() => setAnalysisReady(true)); // fallback: let animation finish with sample data
+      .then((result) => { analyzedItemsRef.current.set(result.id, result); setAnalysisResult(result); setAnalysisReady(true); setAnalysisHistory((prev) => [result, ...prev]); })
+      .catch(() => { setAnalysisError(true); setAnalysisReady(true); });
   };
+
+  useEffect(() => {
+    try { localStorage.setItem("vellum_saved", JSON.stringify([...savedSet])); } catch {}
+  }, [savedSet]);
+
+  useEffect(() => {
+    try { localStorage.setItem("vellum_uploads", JSON.stringify(savedUploads)); } catch {}
+  }, [savedUploads]);
+
+  useEffect(() => {
+    try { localStorage.setItem("vellum_history", JSON.stringify(analysisHistory.slice(0, 30))); } catch {}
+  }, [analysisHistory]);
 
   const handleAnalyzingDone = useCallback(() => {
     setUploadedImage(analyzingImage);
@@ -101,8 +125,8 @@ export function WorkspaceApp() {
       } else {
         ns.add(id);
         if (!inLibrary) {
-          const item = analyzedItemsRef.current.get(id);
-          if (item) setSavedUploads((prev) => [item, ...prev]);
+          const item = analyzedItemsRef.current.get(id) || analysisHistory.find((x) => x.id === id);
+          if (item) setSavedUploads((prev) => prev.some((x) => x.id === id) ? prev : [item, ...prev]);
         }
         setToastMsg("Saved to library");
       }
@@ -110,9 +134,21 @@ export function WorkspaceApp() {
     });
   };
 
-  const currentItem = analysisResult || LIBRARY.find((x) => x.id === currentItemId) || LIBRARY[0];
+  const requestToggleSave = (id: string) => {
+    if (savedSet.has(id)) {
+      setConfirmUnsaveId(id);
+    } else {
+      toggleSave(id);
+    }
+  };
 
-  const allLibraryItems = [...savedUploads, ...LIBRARY];
+  const seenIds = new Set<string>();
+  const allLibraryItems: LibraryItem[] = [];
+  for (const item of [...analysisHistory, ...savedUploads, ...LIBRARY]) {
+    if (!seenIds.has(item.id)) { seenIds.add(item.id); allLibraryItems.push(item); }
+  }
+
+  const currentItem = analysisResult || allLibraryItems.find((x) => x.id === currentItemId) || LIBRARY[0];
   const modalItem = modalItemId ? allLibraryItems.find((x) => x.id === modalItemId) : null;
   const modalIdx = modalItemId ? allLibraryItems.findIndex((x) => x.id === modalItemId) : -1;
 
@@ -152,13 +188,16 @@ export function WorkspaceApp() {
         <LandingScreen onUpload={handleUpload} onNavigate={() => navigate("results-sample")} />
       )}
       {screen === "analyzing" && analyzingImage && (
-        <AnalyzingScreen image={analyzingImage} onDone={handleAnalyzingDone} ready={analysisReady} />
+        <AnalyzingScreen image={analyzingImage} onDone={handleAnalyzingDone} ready={analysisReady} error={analysisError} onBack={() => navigate("landing")} />
       )}
       {screen === "results" && (
-        <ResultsScreen item={currentItem} image={uploadedImage} mode={analysisMode} onNavigate={() => navigate("library")} onToast={setToastMsg} onSave={toggleSave} isSaved={savedSet.has(currentItem.id)} />
+        <ResultsScreen item={currentItem} image={uploadedImage} mode={analysisMode} onNavigate={() => navigate("library")} onToast={setToastMsg} onSave={requestToggleSave} isSaved={savedSet.has(currentItem.id)} />
       )}
       {screen === "library" && (
-        <LibraryScreen onNavigate={() => navigate("landing")} savedSet={savedSet} onToggleSave={toggleSave} onOpenModal={(id) => setModalItemId(id)} extraItems={savedUploads} hasLastAnalysis={analysisResult !== null} onBackToResults={() => navigate("back-to-results")} />
+        <LibraryScreen onNavigate={() => navigate("landing")} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} extraItems={savedUploads} historyItems={analysisHistory} hasLastAnalysis={analysisResult !== null} onBackToResults={() => navigate("back-to-results")} />
+      )}
+      {screen === "history" && (
+        <HistoryScreen items={analysisHistory} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} onNavigate={() => navigate("landing")} />
       )}
 
       {modalItem && (
@@ -166,16 +205,64 @@ export function WorkspaceApp() {
           item={modalItem}
           onClose={() => setModalItemId(null)}
           onToast={setToastMsg}
-          onSave={() => toggleSave(modalItem.id)}
+          onSave={() => requestToggleSave(modalItem.id)}
           isSaved={savedSet.has(modalItem.id)}
           hasPrev={modalIdx > 0}
           hasNext={modalIdx < allLibraryItems.length - 1}
           onPrev={() => setModalItemId(allLibraryItems[modalIdx - 1].id)}
           onNext={() => setModalItemId(allLibraryItems[modalIdx + 1].id)}
+          onOpenResults={() => { setModalItemId(null); navigate("results", modalItem.id); }}
         />
       )}
 
       <Toast msg={toastMsg} onDone={() => setToastMsg("")} />
+
+      {confirmUnsaveId && (() => {
+        const item = allLibraryItems.find((x) => x.id === confirmUnsaveId) || LIBRARY.find((x) => x.id === confirmUnsaveId);
+        return (
+          <div
+            onClick={() => setConfirmUnsaveId(null)}
+            style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(20,14,10,0.45)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: "var(--chalk)", border: "1px solid var(--rule-soft)", borderRadius: "var(--r-lg)", width: "min(400px, 100%)", boxShadow: "var(--shadow-3)", overflow: "hidden" }}
+            >
+              <div style={{ padding: "20px 24px 0", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <div>
+                  <div style={{ fontFamily: "var(--font-display)", fontSize: 20, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em" }}>Remove from saved?</div>
+                  {item && <div style={{ fontFamily: "var(--font-accent)", fontStyle: "italic", fontSize: 14, color: "var(--walnut)", marginTop: 6 }}>&ldquo;{item.title}&rdquo;</div>}
+                </div>
+                <button onClick={() => setConfirmUnsaveId(null)} style={{ width: 28, height: 28, borderRadius: "50%", border: "1px solid var(--rule)", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--fg-3)", flexShrink: 0 }}>
+                  <X weight="thin" size={14} />
+                </button>
+              </div>
+              <div style={{ padding: "10px 24px 24px" }}>
+                <p style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fg-3)", lineHeight: 1.6 }}>
+                  This will remove it from your saved collection. You can save it again any time.
+                </p>
+                <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+                  <button
+                    onClick={() => setConfirmUnsaveId(null)}
+                    className="btn btn-ghost"
+                    style={{ flex: 1 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => { toggleSave(confirmUnsaveId); setConfirmUnsaveId(null); }}
+                    style={{ flex: 1, padding: "10px 0", background: "var(--terracotta)", color: "var(--chalk)", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 500, cursor: "pointer", transition: "background 160ms var(--ease-out)" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--terracotta-deep)")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "var(--terracotta)")}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
       </div>
     </div>
   );

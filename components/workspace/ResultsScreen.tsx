@@ -1,6 +1,6 @@
 "use client";
-import { useState, useMemo } from "react";
-import { ArrowLeft, BookmarkSimple, Export, Copy, ListDashes, Tag, TerminalWindow, PencilSimple, Check, Plus, X, ArrowsOut } from "@phosphor-icons/react";
+import { useState } from "react";
+import { ArrowLeft, BookmarkSimple, Copy, ListDashes, TerminalWindow, PencilSimple, Check, X, ArrowsOut } from "@phosphor-icons/react";
 import { Eyebrow, SectionRule } from "@/components/ui/Eyebrow";
 import { PaletteStrip } from "@/components/ui/PaletteStrip";
 import { PromptHighlight } from "@/components/ui/PromptHighlight";
@@ -17,8 +17,9 @@ function fmtMidjourneyStyle(item: LibraryItem): { prompt: string; flags: string 
   const mood = item.mood.split(" · ").map((w) => w.toLowerCase()).join(", ");
   const comp = item.composition.split(" · ")[0].toLowerCase();
   const tex = item.texture.split(" · ")[0].toLowerCase();
+  const artRef = item.art_references ? item.art_references.split(" · ").slice(0, 2).join(", ").toLowerCase() : "";
   return {
-    prompt: `${lighting} lighting, ${comp} composition, ${colorKws}, ${mood}, ${tex}, editorial photography, film grain`,
+    prompt: `${lighting} lighting, ${comp} composition, ${colorKws}, ${mood}, ${tex}${artRef ? `, ${artRef}` : ""}, editorial photography, film grain`,
     flags: item.flags || "--ar 4:5 --style raw --s 200",
   };
 }
@@ -26,7 +27,8 @@ function fmtMidjourneyStyle(item: LibraryItem): { prompt: string; flags: string 
 function fmtFLUXStyle(item: LibraryItem): string {
   const hexList = item.palette.map((c) => c.hex).join(", ");
   const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
-  return `${item.promptText} Color palette: ${hexList}. Lighting: ${lighting}. ${item.texture.replace(/ · /g, ", ")}.`;
+  const artRef = item.art_references ? ` Style reference: ${item.art_references}.` : "";
+  return `${item.promptText} Color palette: ${hexList}. Lighting: ${lighting}. ${item.texture.replace(/ · /g, ", ")}.${artRef}`;
 }
 
 function fmtSDStyle(item: LibraryItem): { positive: string; negative: string } {
@@ -47,13 +49,15 @@ function fmtDALLEStyle(item: LibraryItem): string {
   const colors = item.palette.map((c) => c.name.toLowerCase()).join(", ");
   const mood = item.mood.split(" · ")[0].toLowerCase();
   const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
-  return `A ${mood} photograph. ${item.promptText} Lighting: ${lighting}. Color palette: ${colors}. ${item.texture.split(" · ")[0].toLowerCase()} texture. No digital art, no over-sharpening.`;
+  const artRef = item.art_references ? ` Inspired by: ${item.art_references}.` : "";
+  return `A ${mood} photograph. ${item.promptText} Lighting: ${lighting}. Color palette: ${colors}. ${item.texture.split(" · ")[0].toLowerCase()} texture.${artRef} No digital art, no over-sharpening.`;
 }
 
 function fmtGeminiStyle(item: LibraryItem): string {
   const mood = item.mood.split(" · ")[0].toLowerCase();
   const colors = item.palette.map((c) => c.name.toLowerCase()).join(", ");
-  return `${mood.charAt(0).toUpperCase() + mood.slice(1)} photograph. ${item.promptText} Color tones: ${colors}. ${item.composition.split(" · ")[0]} framing. Photographic style, natural light, no over-sharpening.`;
+  const artRef = item.art_references ? ` Reference: ${item.art_references}.` : "";
+  return `${mood.charAt(0).toUpperCase() + mood.slice(1)} photograph. ${item.promptText} Color tones: ${colors}. ${item.composition.split(" · ")[0]} framing.${artRef} Photographic style, natural light, no over-sharpening.`;
 }
 
 // ─── Realism mode formatters ───────────────────────────────────────────────────
@@ -134,22 +138,12 @@ export function ResultsScreen({
   onSave: (id: string) => void;
   isSaved: boolean;
 }) {
-  const [tab, setTab] = useState<"structured" | "tokens" | "midjourney" | "flux" | "dalle" | "gemini" | "sd">("structured");
+  const [tab, setTab] = useState<"structured" | "midjourney" | "flux" | "dalle" | "gemini" | "sd">("structured");
   const [editing, setEditing] = useState(false);
   const [body, setBody] = useState(item.promptText);
-  const [flagsText, setFlagsText] = useState(item.flags);
   const [fullModal, setFullModal] = useState<{ title: string; text: string } | null>(null);
 
-  const chips = useMemo(() => ([
-    { group: "lighting", text: item.lighting.split(" · ")[0].toLowerCase() },
-    { group: "lighting", text: "soft falloff" },
-    { group: "composition", text: item.composition.split(" · ")[0].toLowerCase() },
-    { group: "palette", text: "warm walnut + cream" },
-    { group: "palette", text: "single terracotta accent" },
-    { group: "mood", text: item.mood.split(" · ")[0].toLowerCase() },
-    { group: "texture", text: "35mm grain" },
-    { group: "lens", text: "medium format, 80mm" },
-  ]), [item.id]);
+  const effectiveItem = { ...item, promptText: body };
 
   const copyPrompt = () => {
     const text = body;
@@ -159,7 +153,6 @@ export function ResultsScreen({
 
   const TABS = [
     { id: "structured" as const, lbl: "Analysis", Icon: ListDashes },
-    { id: "tokens" as const, lbl: "Tokens", Icon: Tag },
     { id: "midjourney" as const, lbl: "Midjourney", Icon: TerminalWindow },
     { id: "flux" as const, lbl: "FLUX", Icon: TerminalWindow },
     { id: "dalle" as const, lbl: "ChatGPT / DALL-E", Icon: TerminalWindow },
@@ -184,7 +177,6 @@ export function ResultsScreen({
               <BookmarkSimple weight={isSaved ? "fill" : "thin"} size={16} />
               {isSaved ? "Saved to library" : "Save to library"}
             </button>
-            <button className="btn btn-ghost"><Export weight="thin" size={16} />Export</button>
             <button className="btn btn-accent" onClick={copyPrompt}>
               <Copy weight="thin" size={16} />Copy prompt
             </button>
@@ -242,6 +234,13 @@ export function ResultsScreen({
               ))}
             </div>
 
+            {item.art_references && (
+              <div>
+                <div className="eyebrow" style={{ marginBottom: 6 }}>Art References</div>
+                <div style={{ fontSize: 13.5, color: "var(--walnut)", lineHeight: 1.5 }}>{item.art_references}</div>
+              </div>
+            )}
+
             <div>
               <div className="eyebrow" style={{ marginBottom: 8 }}>Palette</div>
               <PaletteStrip palette={item.palette} height={42} withLabels copyable onToast={onToast} />
@@ -290,10 +289,12 @@ export function ResultsScreen({
               </button>
             ))}
             <div style={{ flex: 1 }} />
-            <button onClick={() => setEditing(!editing)} className="meta-mono" style={{ padding: "10px 8px", color: editing ? "var(--terracotta)" : "var(--fg-mute)" }}>
-              {editing ? <Check weight="thin" size={14} style={{ marginRight: 6, display: "inline" }} /> : <PencilSimple weight="thin" size={14} style={{ marginRight: 6, display: "inline" }} />}
-              {editing ? "done" : "edit"}
-            </button>
+            {tab === "structured" && (
+              <button onClick={() => setEditing(!editing)} className="meta-mono" style={{ padding: "10px 8px", color: editing ? "var(--terracotta)" : "var(--fg-mute)" }}>
+                {editing ? <Check weight="thin" size={14} style={{ marginRight: 6, display: "inline" }} /> : <PencilSimple weight="thin" size={14} style={{ marginRight: 6, display: "inline" }} />}
+                {editing ? "done" : "edit"}
+              </button>
+            )}
           </div>
 
           <div style={{ padding: 24 }}>
@@ -320,36 +321,8 @@ export function ResultsScreen({
               </div>
             )}
 
-            {tab === "tokens" && (
-              <div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  {["lighting", "composition", "palette", "mood", "texture", "lens"].map((g) => (
-                    <div key={g} style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 16, alignItems: "start" }}>
-                      <div className="eyebrow" style={{ paddingTop: 6 }}>{g}</div>
-                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {chips.filter((c) => c.group === g).map((c, i) => (
-                          <span key={i} className="chip" style={{ background: "var(--bg-sunken)", color: "var(--ink)", border: "1px solid var(--rule)", padding: "5px 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                            {c.text}<X weight="thin" size={12} color="var(--fg-mute)" />
-                          </span>
-                        ))}
-                        <button className="chip" style={{ background: "transparent", color: "var(--fg-mute)", border: "1px dashed var(--rule)", cursor: "pointer" }}>
-                          <Plus weight="thin" size={11} />add
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--rule-soft)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span className="meta-mono" style={{ color: "var(--fg-mute)" }}>{chips.length} tokens across 6 groups</span>
-                  <button onClick={() => { const joined = chips.map((c) => c.text).join(", "); navigator.clipboard?.writeText(joined); onToast(`${chips.length} tokens copied`); }} className="inline-copy" style={INLINE_COPY_STYLE}>
-                    <Copy weight="thin" size={13} /> Copy all
-                  </button>
-                </div>
-              </div>
-            )}
-
             {tab === "midjourney" && (() => {
-              const { prompt, flags } = fmtMidjourney(item, mode);
+              const { prompt, flags } = fmtMidjourney(effectiveItem, mode);
               const full = `${prompt} ${flags}`;
               return (
                 <div>
@@ -371,7 +344,7 @@ export function ResultsScreen({
             })()}
 
             {tab === "flux" && (() => {
-              const prompt = fmtFLUX(item, mode);
+              const prompt = fmtFLUX(effectiveItem, mode);
               return (
                 <div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, lineHeight: 1.7, color: "var(--walnut)", background: "var(--bg-sunken)", padding: 16, borderRadius: 4, maxHeight: 180, overflowY: "auto" }}>
@@ -398,7 +371,7 @@ export function ResultsScreen({
             })()}
 
             {tab === "dalle" && (() => {
-              const prompt = fmtDALLE(item, mode);
+              const prompt = fmtDALLE(effectiveItem, mode);
               return (
                 <div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, lineHeight: 1.7, color: "var(--walnut)", background: "var(--bg-sunken)", padding: 16, borderRadius: 4, maxHeight: 180, overflowY: "auto" }}>
@@ -418,7 +391,7 @@ export function ResultsScreen({
             })()}
 
             {tab === "gemini" && (() => {
-              const prompt = fmtGemini(item, mode);
+              const prompt = fmtGemini(effectiveItem, mode);
               return (
                 <div>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 13, lineHeight: 1.7, color: "var(--walnut)", background: "var(--bg-sunken)", padding: 16, borderRadius: 4, maxHeight: 180, overflowY: "auto" }}>
@@ -438,7 +411,7 @@ export function ResultsScreen({
             })()}
 
             {tab === "sd" && (() => {
-              const { positive, negative } = fmtSD(item, mode);
+              const { positive, negative } = fmtSD(effectiveItem, mode);
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div>

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Mark } from "@/components/ui/Mark";
 import { EtherealShadow } from "@/components/ui/etheral-shadow";
-import { ArrowRight } from "@phosphor-icons/react";
+import { ArrowRightIcon } from "@phosphor-icons/react";
 
 const SAMPLE_PALETTE = [
   { hex: "#1F1611" }, { hex: "#5A4634" }, { hex: "#A38A6E" },
@@ -40,10 +40,10 @@ export default function LandingPage() {
           <span style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 520, fontVariationSettings: '"opsz" 84', letterSpacing: "0.005em", color: "var(--ink)", lineHeight: 1 }}>VELLUM</span>
         </a>
         <div style={{ display: "flex", alignItems: "center", gap: 26, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--fg-3)" }}>
-          <Link href="/workspace" style={{ transition: "color 160ms var(--ease-out)" }}>Library</Link>
+          <Link href="/workspace?screen=library" style={{ transition: "color 160ms var(--ease-out)" }}>Library</Link>
           <a href="#manifesto" style={{ transition: "color 160ms var(--ease-out)" }}>Manifesto</a>
           <Link href="/workspace" style={{ padding: "8px 16px", borderRadius: 4, background: "var(--ink)", color: "var(--chalk)", display: "inline-flex", alignItems: "center", gap: 6, transition: "background 160ms var(--ease-out)", textDecoration: "none" }}>
-            Open workspace <ArrowRight weight="thin" size={16} />
+            Open workspace <ArrowRightIcon weight="thin" size={16} />
           </Link>
         </div>
       </nav>
@@ -91,7 +91,7 @@ export default function LandingPage() {
               onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--walnut)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--ink)"; }}
             >
-              Open workspace <ArrowRight weight="thin" size={18} />
+              Open workspace <ArrowRightIcon weight="thin" size={18} />
             </Link>
             <a href="#demo" style={{ fontSize: 14, color: "var(--fg-3)", borderBottom: "1px solid var(--rule)", paddingBottom: 2, textDecoration: "none", transition: "all 160ms var(--ease-out)" }}>
               See an example

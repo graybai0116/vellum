@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { BookmarkSimple, Export, X, ArrowLeft, ArrowRight, Copy, Check, PencilSimple, ListDashes, Tag, TerminalWindow, ArrowsOut } from "@phosphor-icons/react";
+import { BookmarkSimple, X, ArrowLeft, ArrowRight, Copy, Check, PencilSimple, ListDashes, TerminalWindow, ArrowsOut, ArrowSquareOut } from "@phosphor-icons/react";
 import { PromptHighlight } from "@/components/ui/PromptHighlight";
 import { LibraryItem } from "@/lib/data";
 
@@ -31,12 +31,14 @@ function fmtMidjourneyStyle(item: LibraryItem) {
   const mood = item.mood.split(" · ").map((w) => w.toLowerCase()).join(", ");
   const comp = item.composition.split(" · ")[0].toLowerCase();
   const tex = item.texture.split(" · ")[0].toLowerCase();
-  return { prompt: `${lighting} lighting, ${comp} composition, ${colorKws}, ${mood}, ${tex}, editorial photography, film grain`, flags: item.flags || "--ar 4:5 --style raw --s 200" };
+  const artRef = item.art_references ? item.art_references.split(" · ").slice(0, 2).join(", ").toLowerCase() : "";
+  return { prompt: `${lighting} lighting, ${comp} composition, ${colorKws}, ${mood}, ${tex}${artRef ? `, ${artRef}` : ""}, editorial photography, film grain`, flags: item.flags || "--ar 4:5 --style raw --s 200" };
 }
 function fmtFLUXStyle(item: LibraryItem) {
   const hexList = item.palette.map((c) => c.hex).join(", ");
   const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
-  return `${item.promptText} Color palette: ${hexList}. Lighting: ${lighting}. ${item.texture.replace(/ · /g, ", ")}.`;
+  const artRef = item.art_references ? ` Style reference: ${item.art_references}.` : "";
+  return `${item.promptText} Color palette: ${hexList}. Lighting: ${lighting}. ${item.texture.replace(/ · /g, ", ")}.${artRef}`;
 }
 function fmtSDStyle(item: LibraryItem) {
   return {
@@ -48,12 +50,14 @@ function fmtDALLEStyle(item: LibraryItem) {
   const colors = item.palette.map((c) => c.name.toLowerCase()).join(", ");
   const mood = item.mood.split(" · ")[0].toLowerCase();
   const lighting = item.lighting.replace(/ · /g, ", ").toLowerCase();
-  return `A ${mood} photograph. ${item.promptText} Lighting: ${lighting}. Color palette: ${colors}. ${item.texture.split(" · ")[0].toLowerCase()} texture. No digital art, no over-sharpening.`;
+  const artRef = item.art_references ? ` Inspired by: ${item.art_references}.` : "";
+  return `A ${mood} photograph. ${item.promptText} Lighting: ${lighting}. Color palette: ${colors}. ${item.texture.split(" · ")[0].toLowerCase()} texture.${artRef} No digital art, no over-sharpening.`;
 }
 function fmtGeminiStyle(item: LibraryItem) {
   const mood = item.mood.split(" · ")[0].toLowerCase();
   const colors = item.palette.map((c) => c.name.toLowerCase()).join(", ");
-  return `${mood.charAt(0).toUpperCase() + mood.slice(1)} photograph. ${item.promptText} Color tones: ${colors}. ${item.composition.split(" · ")[0]} framing. Photographic style, natural light, no over-sharpening.`;
+  const artRef = item.art_references ? ` Reference: ${item.art_references}.` : "";
+  return `${mood.charAt(0).toUpperCase() + mood.slice(1)} photograph. ${item.promptText} Color tones: ${colors}. ${item.composition.split(" · ")[0]} framing.${artRef} Photographic style, natural light, no over-sharpening.`;
 }
 function fmtMidjourneyRealism(item: LibraryItem) {
   const subjects = item.subjects || item.promptText;
@@ -97,7 +101,7 @@ function fmtGemini(item: LibraryItem, mode: Mode) { return mode === "realism" ? 
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function StyleModal({
-  item, onClose, onToast, onSave, isSaved, onPrev, onNext, hasPrev, hasNext,
+  item, onClose, onToast, onSave, isSaved, onPrev, onNext, hasPrev, hasNext, onOpenResults,
 }: {
   item: LibraryItem;
   onClose: () => void;
@@ -108,9 +112,10 @@ export function StyleModal({
   onNext: () => void;
   hasPrev: boolean;
   hasNext: boolean;
+  onOpenResults?: () => void;
 }) {
   const mode: Mode = item.subjects ? "realism" : "style";
-  const [tab, setTab] = useState<"structured" | "tokens" | "midjourney" | "flux" | "dalle" | "gemini" | "sd">("structured");
+  const [tab, setTab] = useState<"structured" | "midjourney" | "flux" | "dalle" | "gemini" | "sd">("structured");
   const [body, setBody] = useState(item.promptText);
   const [editing, setEditing] = useState(false);
   const [fullModal, setFullModal] = useState<{ title: string; text: string } | null>(null);
@@ -141,22 +146,15 @@ export function StyleModal({
     return () => { document.body.style.overflow = prev; window.removeEventListener("keydown", onKey); };
   }, [hasPrev, hasNext, onClose, onPrev, onNext, fullModal]);
 
+  const effectiveItem = { ...item, promptText: body };
+
   const TABS = [
     { id: "structured" as const, lbl: "Analysis", Icon: ListDashes },
-    { id: "tokens" as const, lbl: "Tokens", Icon: Tag },
     { id: "midjourney" as const, lbl: "Midjourney", Icon: TerminalWindow },
     { id: "flux" as const, lbl: "FLUX", Icon: TerminalWindow },
     { id: "dalle" as const, lbl: "ChatGPT / DALL-E", Icon: TerminalWindow },
     { id: "gemini" as const, lbl: "Gemini", Icon: TerminalWindow },
     { id: "sd" as const, lbl: "Stable Diffusion", Icon: TerminalWindow },
-  ];
-
-  const chips = [
-    { group: "lighting", text: item.lighting.split(" · ")[0].toLowerCase() },
-    { group: "composition", text: item.composition.split(" · ")[0].toLowerCase() },
-    { group: "mood", text: item.mood.split(" · ")[0].toLowerCase() },
-    { group: "texture", text: item.texture.split(" · ")[0].toLowerCase() },
-    ...item.palette.map((c) => ({ group: "palette", text: c.name.toLowerCase() })),
   ];
 
   return (
@@ -224,10 +222,14 @@ export function StyleModal({
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {onOpenResults && (
+                <button onClick={onOpenResults} className="btn btn-ghost" style={{ fontSize: 12, padding: "6px 12px", gap: 6 }}>
+                  <ArrowSquareOut weight="thin" size={14} />Full analysis
+                </button>
+              )}
               <button onClick={onSave} title={isSaved ? "Saved" : "Save"} style={ICON_BTN}>
                 <BookmarkSimple weight={isSaved ? "fill" : "thin"} size={16} color={isSaved ? "var(--terracotta)" : undefined} />
               </button>
-              <button title="Export" style={ICON_BTN}><Export weight="thin" size={16} /></button>
               <span style={{ width: 1, height: 18, background: "var(--rule)", margin: "0 6px" }} />
               <button onClick={onClose} aria-label="Close" style={ICON_BTN}><X weight="thin" size={16} /></button>
             </div>
@@ -283,6 +285,13 @@ export function StyleModal({
                 </p>
               )}
 
+              {item.art_references && (
+                <div>
+                  <div className="meta-mono" style={{ color: "var(--fg-mute)", letterSpacing: "0.16em", textTransform: "uppercase", fontSize: 10, marginBottom: 4 }}>Art References</div>
+                  <div style={{ fontSize: 13, color: "var(--walnut)", lineHeight: 1.5 }}>{item.art_references}</div>
+                </div>
+              )}
+
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {item.tags.map((t) => <span key={t} className="chip">#{t}</span>)}
               </div>
@@ -302,10 +311,12 @@ export function StyleModal({
                     </button>
                   ))}
                   <div style={{ flex: 1 }} />
-                  <button onClick={() => setEditing(!editing)} className="meta-mono" style={{ padding: "9px 8px", color: editing ? "var(--terracotta)" : "var(--fg-mute)", fontSize: 10 }}>
-                    {editing ? <Check weight="thin" size={12} style={{ marginRight: 4, display: "inline" }} /> : <PencilSimple weight="thin" size={12} style={{ marginRight: 4, display: "inline" }} />}
-                    {editing ? "done" : "edit"}
-                  </button>
+                  {tab === "structured" && (
+                    <button onClick={() => setEditing(!editing)} className="meta-mono" style={{ padding: "9px 8px", color: editing ? "var(--terracotta)" : "var(--fg-mute)", fontSize: 10 }}>
+                      {editing ? <Check weight="thin" size={12} style={{ marginRight: 4, display: "inline" }} /> : <PencilSimple weight="thin" size={12} style={{ marginRight: 4, display: "inline" }} />}
+                      {editing ? "done" : "edit"}
+                    </button>
+                  )}
                 </div>
 
                 <div style={{ padding: 14 }}>
@@ -328,28 +339,8 @@ export function StyleModal({
                     </div>
                   )}
 
-                  {tab === "tokens" && (
-                    <div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10, maxHeight: 200, overflowY: "auto" }}>
-                        {["lighting", "composition", "mood", "texture", "palette"].map((g) => (
-                          <div key={g} style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: 10, alignItems: "start" }}>
-                            <div className="meta-mono" style={{ color: "var(--fg-mute)", letterSpacing: "0.16em", textTransform: "uppercase", fontSize: 10, paddingTop: 4 }}>{g}</div>
-                            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                              {chips.filter((c) => c.group === g).map((c, i) => (
-                                <span key={i} className="chip" style={{ background: "var(--paper)", color: "var(--ink)", border: "1px solid var(--rule)" }}>{c.text}</span>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                      <div style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
-                        <button onClick={() => { const j = chips.map((c) => c.text).join(", "); navigator.clipboard?.writeText(j); onToast("Tokens copied"); }} style={INLINE}><Copy weight="thin" size={12} /> Copy all</button>
-                      </div>
-                    </div>
-                  )}
-
                   {tab === "midjourney" && (() => {
-                    const { prompt, flags } = fmtMidjourney(item, mode);
+                    const { prompt, flags } = fmtMidjourney(effectiveItem, mode);
                     const full = `${prompt} ${flags}`;
                     return (
                       <div>
@@ -367,7 +358,7 @@ export function StyleModal({
                   })()}
 
                   {tab === "flux" && (() => {
-                    const prompt = fmtFLUX(item, mode);
+                    const prompt = fmtFLUX(effectiveItem, mode);
                     return (
                       <div>
                         <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 160, overflowY: "auto" }}>
@@ -390,7 +381,7 @@ export function StyleModal({
                   })()}
 
                   {tab === "dalle" && (() => {
-                    const prompt = fmtDALLE(item, mode);
+                    const prompt = fmtDALLE(effectiveItem, mode);
                     return (
                       <div>
                         <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 160, overflowY: "auto" }}>
@@ -406,7 +397,7 @@ export function StyleModal({
                   })()}
 
                   {tab === "gemini" && (() => {
-                    const prompt = fmtGemini(item, mode);
+                    const prompt = fmtGemini(effectiveItem, mode);
                     return (
                       <div>
                         <div style={{ fontFamily: "var(--font-mono)", fontSize: 12.5, lineHeight: 1.7, color: "var(--walnut)", background: "color-mix(in oklch, var(--paper) 50%, transparent)", padding: 12, borderRadius: 4, maxHeight: 160, overflowY: "auto" }}>
@@ -422,7 +413,7 @@ export function StyleModal({
                   })()}
 
                   {tab === "sd" && (() => {
-                    const { positive, negative } = fmtSD(item, mode);
+                    const { positive, negative } = fmtSD(effectiveItem, mode);
                     return (
                       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                         <div>

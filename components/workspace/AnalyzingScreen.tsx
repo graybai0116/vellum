@@ -13,11 +13,13 @@ const TOKEN_LIST = [
 ];
 
 export function AnalyzingScreen({
-  image, onDone, ready,
+  image, onDone, ready, error, onBack,
 }: {
   image: { src: string; name: string };
   onDone: () => void;
   ready?: boolean;
+  error?: boolean;
+  onBack?: () => void;
 }) {
   const [tokens, setTokens] = useState<string[]>([]);
   const [animDone, setAnimDone] = useState(false);
@@ -33,23 +35,25 @@ export function AnalyzingScreen({
     return () => { clearTimeout(t2); clearInterval(iv); };
   }, []);
 
-  // Call onDone when animation finished AND API ready (or no API needed)
+  // Call onDone when animation finished AND API ready (and no error)
   useEffect(() => {
-    if (animDone && ready !== false) onDone();
-  }, [animDone, ready, onDone]);
+    if (animDone && ready !== false && !error) onDone();
+  }, [animDone, ready, error, onDone]);
 
   return (
     <div className="screen fade-enter">
       <div className="container" style={{ paddingTop: 48, paddingBottom: 96 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 32 }}>
           <Eyebrow num="03">Reading the image</Eyebrow>
-          <span className="meta-mono" style={{ color: "var(--terracotta)", display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{
-              display: "inline-block", width: 6, height: 6, borderRadius: "50%",
-              background: "var(--terracotta)",
-              animation: "pulse 1.4s ease-in-out infinite",
-            }} />
-            analysing · ≈ 3s
+          <span className="meta-mono" style={{ color: error && animDone ? "var(--fg-mute)" : "var(--terracotta)", display: "flex", alignItems: "center", gap: 8 }}>
+            {!(error && animDone) && (
+              <span style={{
+                display: "inline-block", width: 6, height: 6, borderRadius: "50%",
+                background: "var(--terracotta)",
+                animation: "pulse 1.4s ease-in-out infinite",
+              }} />
+            )}
+            {error && animDone ? "analysis failed" : "analysing · ≈ 3s"}
           </span>
         </div>
 
@@ -110,7 +114,15 @@ export function AnalyzingScreen({
                   <Check weight="thin" size={14} color="var(--sage)" />
                 </div>
               ))}
-              {tokens.length < TOKEN_LIST.length && (
+              {error && animDone ? (
+                <div style={{ marginTop: 8, padding: "16px 20px", background: "var(--chalk)", borderRadius: "var(--r-md)", border: "1px solid color-mix(in oklch, var(--terracotta) 25%, transparent)" }}>
+                  <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--terracotta)", letterSpacing: "0.08em", marginBottom: 8 }}>ANALYSIS FAILED</div>
+                  <div style={{ fontSize: 13, color: "var(--walnut)", lineHeight: 1.55, marginBottom: 16 }}>
+                    Could not process this image. Check your API key or try a different file.
+                  </div>
+                  <button onClick={onBack} className="btn btn-ghost" style={{ fontSize: 13 }}>← Go back</button>
+                </div>
+              ) : tokens.length < TOKEN_LIST.length && (
                 <div className="meta-mono" style={{ color: "var(--fg-mute)", marginTop: 4 }}>
                   {["●", "●", "●"].map((dot, i) => (
                     <span key={i} style={{
