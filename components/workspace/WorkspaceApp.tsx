@@ -1,6 +1,7 @@
 "use client";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { X } from "@phosphor-icons/react";
+import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs";
 import { LIBRARY, LibraryItem } from "@/lib/data";
 import { TopBar } from "./TopBar";
 import { LandingScreen, AnalysisMode } from "./LandingScreen";
@@ -31,8 +32,13 @@ function resizeImage(dataUrl: string, maxPx = 1536): Promise<string> {
   });
 }
 
+const ANON_LIMIT = 3;
+
 export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Screen }) {
+  const { isSignedIn } = useUser();
   const [screen, setScreen] = useState<Screen>(initialScreen);
+  const [showAnonLimitModal, setShowAnonLimitModal] = useState(false);
+  const [anonCount, setAnonCount] = useState(0);
   const [currentItemId, setCurrentItemId] = useState(LIBRARY[0].id);
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [analyzingImage, setAnalyzingImage] = useState<UploadedImage | null>(null);
@@ -47,6 +53,11 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   const hasLoadedRef = useRef(false);
   const [confirmUnsaveId, setConfirmUnsaveId] = useState<string | null>(null);
   const analyzedItemsRef = useRef<Map<string, LibraryItem>>(new Map());
+
+  useEffect(() => {
+    const stored = parseInt(localStorage.getItem("vellum_anon_uses") || "0", 10);
+    setAnonCount(stored);
+  }, []);
 
   useEffect(() => {
     fetch("/api/user-data")
@@ -95,6 +106,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   };
 
   const handleUpload = async ({ name, dataUrl }: { name: string; dataUrl: string }, mode: AnalysisMode) => {
+    if (!isSignedIn && anonCount >= ANON_LIMIT) { setShowAnonLimitModal(true); return; }
     const resized = await resizeImage(dataUrl);
     setAnalyzingImage({ src: resized, name });
     setAnalysisResult(null);
@@ -113,9 +125,14 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
         analyzedItemsRef.current.set(result.id, result);
         setAnalysisResult(result);
         setAnalysisReady(true);
+        if (!isSignedIn) {
+          const next = anonCount + 1;
+          setAnonCount(next);
+          localStorage.setItem("vellum_anon_uses", String(next));
+        }
         setAnalysisHistory((prev) => {
           const next = [result, ...prev];
-          persistUserData(next, [...savedSet], savedUploads);
+          if (isSignedIn) persistUserData(next, [...savedSet], savedUploads);
           return next;
         });
       })
@@ -123,6 +140,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   };
 
   const handleUploadUrl = (url: string, mode: AnalysisMode) => {
+    if (!isSignedIn && anonCount >= ANON_LIMIT) { setShowAnonLimitModal(true); return; }
     const name = url.split("/").pop()?.split("?")[0] || "image";
     setAnalyzingImage({ src: url, name });
     setAnalysisResult(null);
@@ -141,9 +159,14 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
         analyzedItemsRef.current.set(result.id, result);
         setAnalysisResult(result);
         setAnalysisReady(true);
+        if (!isSignedIn) {
+          const next = anonCount + 1;
+          setAnonCount(next);
+          localStorage.setItem("vellum_anon_uses", String(next));
+        }
         setAnalysisHistory((prev) => {
           const next = [result, ...prev];
-          persistUserData(next, [...savedSet], savedUploads);
+          if (isSignedIn) persistUserData(next, [...savedSet], savedUploads);
           return next;
         });
       })
@@ -238,10 +261,14 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
         <ResultsScreen item={currentItem} image={uploadedImage} mode={analysisMode} onNavigate={() => navigate("library")} onToast={setToastMsg} onSave={requestToggleSave} isSaved={savedSet.has(currentItem.id)} />
       )}
       {screen === "library" && (
-        <LibraryScreen onNavigate={() => navigate("landing")} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} extraItems={savedUploads} hasLastAnalysis={analysisResult !== null} onBackToResults={() => navigate("back-to-results")} />
+        isSignedIn
+          ? <LibraryScreen onNavigate={() => navigate("landing")} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} extraItems={savedUploads} hasLastAnalysis={analysisResult !== null} onBackToResults={() => navigate("back-to-results")} />
+          : <AuthWall title="Your Library" body="Save and revisit your favourite analyses." onBack={() => navigate("landing")} />
       )}
       {screen === "history" && (
-        <HistoryScreen items={analysisHistory} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} onNavigate={() => navigate("landing")} />
+        isSignedIn
+          ? <HistoryScreen items={analysisHistory} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} onNavigate={() => navigate("landing")} />
+          : <AuthWall title="Analysis History" body="Every image you analyse, saved in one place." onBack={() => navigate("landing")} />
       )}
 
       {modalItem && (
@@ -307,6 +334,53 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
           </div>
         );
       })()}
+      {showAnonLimitModal && (
+        <div onClick={() => setShowAnonLimitModal(false)} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(20,14,10,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--chalk)", border: "1px solid var(--rule-soft)", borderRadius: "var(--r-lg)", width: "min(400px, 100%)", boxShadow: "var(--shadow-3)", overflow: "hidden" }}>
+            <div style={{ padding: "24px 24px 0" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em" }}>Free analyses used up</div>
+              <div style={{ fontFamily: "var(--font-accent)", fontStyle: "italic", fontSize: 14, color: "var(--walnut)", marginTop: 6 }}>You've used your {ANON_LIMIT} free analyses</div>
+            </div>
+            <div style={{ padding: "14px 24px 24px" }}>
+              <p style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fg-3)", lineHeight: 1.7, marginBottom: 20 }}>
+                Create a free account for 10 analyses/month — or go Pro for unlimited access, History, and Library.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <SignUpButton mode="modal">
+                  <button style={{ width: "100%", padding: "11px 0", background: "var(--ink)", color: "var(--chalk)", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    Sign up free — 10/month
+                  </button>
+                </SignUpButton>
+                <SignInButton mode="modal">
+                  <button className="btn btn-ghost" style={{ width: "100%" }}>Already have an account? Sign in</button>
+                </SignInButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      </div>
+    </div>
+  );
+}
+
+function AuthWall({ title, body, onBack }: { title: string; body: string; onBack: () => void }) {
+  return (
+    <div className="screen fade-enter" style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, padding: 24 }}>
+      <div style={{ textAlign: "center", maxWidth: 360 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 10 }}>{title}</div>
+        <p style={{ fontFamily: "var(--font-mono)", fontSize: 13, color: "var(--fg-3)", lineHeight: 1.7, marginBottom: 28 }}>{body}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <SignUpButton mode="modal">
+            <button style={{ width: "100%", padding: "11px 0", background: "var(--ink)", color: "var(--chalk)", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+              Create free account
+            </button>
+          </SignUpButton>
+          <SignInButton mode="modal">
+            <button className="btn btn-ghost" style={{ width: "100%" }}>Sign in</button>
+          </SignInButton>
+          <button onClick={onBack} className="btn btn-ghost" style={{ width: "100%", marginTop: 4, fontSize: 12, color: "var(--fg-3)" }}>← Back to workspace</button>
+        </div>
       </div>
     </div>
   );

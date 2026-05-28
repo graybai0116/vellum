@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
+import { UserButton, SignInButton, useUser } from "@clerk/nextjs";
 import { Mark } from "@/components/ui/Mark";
 
 type Screen = "landing" | "analyzing" | "results" | "library" | "history";
@@ -11,6 +11,7 @@ export function TopBar({
   active: Screen;
   onNavigate: (s: Screen) => void;
 }) {
+  const { isSignedIn } = useUser();
   return (
     <header className="topbar-minimal">
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
@@ -35,7 +36,13 @@ export function TopBar({
           className={`min-link${active === "history" ? " active" : ""}`}
         >History</button>
         <span className="topbar-divider" />
-        <UserButton />
+        {isSignedIn ? (
+          <UserButton />
+        ) : (
+          <SignInButton mode="modal">
+            <button className="btn" style={{ padding: "7px 16px", fontSize: 13 }}>Sign in</button>
+          </SignInButton>
+        )}
       </div>
     </header>
   );
