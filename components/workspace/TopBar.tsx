@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import Link from "next/link";
 import { UserButton, SignInButton, useUser } from "@clerk/nextjs";
 import { Mark } from "@/components/ui/Mark";
@@ -6,12 +7,23 @@ import { Mark } from "@/components/ui/Mark";
 type Screen = "landing" | "analyzing" | "results" | "library" | "history";
 
 export function TopBar({
-  active, onNavigate,
+  active, onNavigate, plan,
 }: {
   active: Screen;
   onNavigate: (s: Screen) => void;
+  plan?: "free" | "pro";
 }) {
   const { isSignedIn } = useUser();
+  const [upgrading, setUpgrading] = useState(false);
+
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    const res = await fetch("/api/stripe/checkout", { method: "POST" });
+    const { url } = await res.json();
+    if (url) window.location.href = url;
+    else setUpgrading(false);
+  };
+
   return (
     <header className="topbar-minimal">
       <Link href="/" style={{ display: "inline-flex", alignItems: "center", gap: 12, textDecoration: "none" }}>
@@ -36,6 +48,20 @@ export function TopBar({
           className={`min-link${active === "history" ? " active" : ""}`}
         >History</button>
         <span className="topbar-divider" />
+        {isSignedIn && plan === "free" && (
+          <button
+            onClick={handleUpgrade}
+            disabled={upgrading}
+            style={{
+              padding: "6px 14px", borderRadius: 4, fontSize: 12, fontWeight: 600,
+              background: "var(--ink)", color: "var(--chalk)", cursor: "pointer",
+              opacity: upgrading ? 0.6 : 1, fontFamily: "var(--font-body)",
+              letterSpacing: "0.02em",
+            }}
+          >
+            {upgrading ? "..." : "Upgrade Pro"}
+          </button>
+        )}
         {isSignedIn ? (
           <UserButton />
         ) : (

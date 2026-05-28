@@ -39,6 +39,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [showAnonLimitModal, setShowAnonLimitModal] = useState(false);
   const [anonCount, setAnonCount] = useState(0);
+  const [plan, setPlan] = useState<"free" | "pro">("free");
   const [currentItemId, setCurrentItemId] = useState(LIBRARY[0].id);
   const [uploadedImage, setUploadedImage] = useState<UploadedImage | null>(null);
   const [analyzingImage, setAnalyzingImage] = useState<UploadedImage | null>(null);
@@ -66,6 +67,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
         setAnalysisHistory(data.history ?? []);
         setSavedUploads(data.saved_uploads ?? []);
         setSavedSet(new Set(data.saved_ids ?? []));
+        setPlan(data.plan ?? "free");
         hasLoadedRef.current = true;
       })
       .catch(() => { hasLoadedRef.current = true; });
@@ -249,7 +251,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       </div>
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
-      <TopBar active={screen} onNavigate={(s) => navigate(s)} />
+      <TopBar active={screen} onNavigate={(s) => navigate(s)} plan={plan} />
 
       {screen === "landing" && (
         <LandingScreen onUpload={handleUpload} onUploadUrl={handleUploadUrl} />

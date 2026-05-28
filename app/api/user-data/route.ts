@@ -8,12 +8,12 @@ export async function GET() {
 
   const { data } = await supabase
     .from("user_data")
-    .select("history, saved_ids, saved_uploads")
+    .select("history, saved_ids, saved_uploads, plan")
     .eq("user_id", userId)
     .single();
 
-  if (!data) return NextResponse.json({ history: [], saved_ids: [], saved_uploads: [] });
-  return NextResponse.json(data);
+  if (!data) return NextResponse.json({ history: [], saved_ids: [], saved_uploads: [], plan: "free" });
+  return NextResponse.json({ ...data, plan: data.plan ?? "free" });
 }
 
 export async function PUT(req: Request) {
