@@ -41,17 +41,40 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   const [analysisError, setAnalysisError] = useState(false);
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("style");
   const [toastMsg, setToastMsg] = useState("");
-  const [savedSet, setSavedSet] = useState<Set<string>>(() => {
-    try { const s = localStorage.getItem("vellum_saved"); return s ? new Set(JSON.parse(s)) : new Set(); } catch { return new Set(); }
-  });
-  const [savedUploads, setSavedUploads] = useState<LibraryItem[]>(() => {
-    try { const s = localStorage.getItem("vellum_uploads"); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
-  const [analysisHistory, setAnalysisHistory] = useState<LibraryItem[]>(() => {
-    try { const s = localStorage.getItem("vellum_history"); return s ? JSON.parse(s) : []; } catch { return []; }
-  });
+  const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
+  const [savedUploads, setSavedUploads] = useState<LibraryItem[]>([]);
+  const [analysisHistory, setAnalysisHistory] = useState<LibraryItem[]>([]);
+  const hasLoadedRef = useRef(false);
   const [confirmUnsaveId, setConfirmUnsaveId] = useState<string | null>(null);
   const analyzedItemsRef = useRef<Map<string, LibraryItem>>(new Map());
+
+  useEffect(() => {
+    fetch("/api/user-data")
+      .then((r) => r.json())
+      .then((data) => {
+        setAnalysisHistory(data.history ?? []);
+        setSavedUploads(data.saved_uploads ?? []);
+        setSavedSet(new Set(data.saved_ids ?? []));
+        hasLoadedRef.current = true;
+      })
+      .catch(() => { hasLoadedRef.current = true; });
+  }, []);
+
+  const persistUserData = (
+    history: LibraryItem[],
+    savedIds: string[],
+    savedUploadsArr: LibraryItem[]
+  ) => {
+    fetch("/api/user-data", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        history: history.slice(0, 30),
+        saved_ids: savedIds,
+        saved_uploads: savedUploadsArr.slice(0, 30),
+      }),
+    });
+  };
   const [modalItemId, setModalItemId] = useState<string | null>(null);
 
   const navigate = (s: Screen | "back-to-results", id?: string) => {
@@ -86,7 +109,16 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       body: JSON.stringify({ imageDataUrl: resized, imageName: name, mode }),
     })
       .then((r) => r.json())
-      .then((result) => { analyzedItemsRef.current.set(result.id, result); setAnalysisResult(result); setAnalysisReady(true); setAnalysisHistory((prev) => [result, ...prev]); })
+      .then((result) => {
+        analyzedItemsRef.current.set(result.id, result);
+        setAnalysisResult(result);
+        setAnalysisReady(true);
+        setAnalysisHistory((prev) => {
+          const next = [result, ...prev];
+          persistUserData(next, [...savedSet], savedUploads);
+          return next;
+        });
+      })
       .catch(() => { setAnalysisError(true); setAnalysisReady(true); });
   };
 
@@ -105,21 +137,18 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       body: JSON.stringify({ imageUrl: url, imageName: name, mode }),
     })
       .then((r) => r.json())
-      .then((result) => { analyzedItemsRef.current.set(result.id, result); setAnalysisResult(result); setAnalysisReady(true); setAnalysisHistory((prev) => [result, ...prev]); })
+      .then((result) => {
+        analyzedItemsRef.current.set(result.id, result);
+        setAnalysisResult(result);
+        setAnalysisReady(true);
+        setAnalysisHistory((prev) => {
+          const next = [result, ...prev];
+          persistUserData(next, [...savedSet], savedUploads);
+          return next;
+        });
+      })
       .catch(() => { setAnalysisError(true); setAnalysisReady(true); });
   };
-
-  useEffect(() => {
-    try { localStorage.setItem("vellum_saved", JSON.stringify([...savedSet])); } catch {}
-  }, [savedSet]);
-
-  useEffect(() => {
-    try { localStorage.setItem("vellum_uploads", JSON.stringify(savedUploads.slice(0, 30))); } catch {}
-  }, [savedUploads]);
-
-  useEffect(() => {
-    try { localStorage.setItem("vellum_history", JSON.stringify(analysisHistory.slice(0, 30))); } catch {}
-  }, [analysisHistory]);
 
   const handleAnalyzingDone = useCallback(() => {
     setUploadedImage(analyzingImage);
@@ -128,22 +157,25 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
 
   const toggleSave = (id: string) => {
     const inLibrary = LIBRARY.some((x) => x.id === id);
-    setSavedSet((s) => {
-      const ns = new Set(s);
-      if (ns.has(id)) {
-        ns.delete(id);
-        if (!inLibrary) setSavedUploads((prev) => prev.filter((x) => x.id !== id));
-        setToastMsg("Removed from saved");
-      } else {
-        ns.add(id);
-        if (!inLibrary) {
-          const item = analyzedItemsRef.current.get(id) || analysisHistory.find((x) => x.id === id);
-          if (item) setSavedUploads((prev) => prev.some((x) => x.id === id) ? prev : [item, ...prev]);
-        }
-        setToastMsg("Saved to library");
+    const newSet = new Set(savedSet);
+    let newUploads = savedUploads;
+
+    if (newSet.has(id)) {
+      newSet.delete(id);
+      if (!inLibrary) newUploads = savedUploads.filter((x) => x.id !== id);
+      setToastMsg("Removed from saved");
+    } else {
+      newSet.add(id);
+      if (!inLibrary) {
+        const item = analyzedItemsRef.current.get(id) || analysisHistory.find((x) => x.id === id);
+        if (item && !savedUploads.some((x) => x.id === id)) newUploads = [item, ...savedUploads];
       }
-      return ns;
-    });
+      setToastMsg("Saved to library");
+    }
+
+    setSavedSet(newSet);
+    setSavedUploads(newUploads);
+    persistUserData(analysisHistory, [...newSet], newUploads);
   };
 
   const requestToggleSave = (id: string) => {

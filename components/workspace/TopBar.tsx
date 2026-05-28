@@ -1,4 +1,6 @@
+"use client";
 import Link from "next/link";
+import { UserButton } from "@clerk/nextjs";
 import { Mark } from "@/components/ui/Mark";
 
 type Screen = "landing" | "analyzing" | "results" | "library" | "history";
@@ -33,7 +35,7 @@ export function TopBar({
           className={`min-link${active === "history" ? " active" : ""}`}
         >History</button>
         <span className="topbar-divider" />
-        <div className="avatar">CL</div>
+        <UserButton afterSignOutUrl="/" />
       </div>
     </header>
   );
