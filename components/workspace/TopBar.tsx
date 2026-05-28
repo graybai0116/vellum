@@ -35,7 +35,7 @@ export function TopBar({
           className={`min-link${active === "history" ? " active" : ""}`}
         >History</button>
         <span className="topbar-divider" />
-        <UserButton afterSignOutUrl="/" />
+        <UserButton />
       </div>
     </header>
   );
