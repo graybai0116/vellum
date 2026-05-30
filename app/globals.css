@@ -233,3 +233,48 @@ h2 { font-size: var(--t-h2); font-weight: 510; letter-spacing: -0.03em; }
   transition: all 160ms var(--ease-out);
 }
 .modal-nav:hover { background: var(--paper); transform: translateY(-50%) scale(1.05); }
+
+/* ============================================================
+   Landing page — responsive helpers
+   ============================================================ */
+.lp-demo-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 28px 1fr;
+  gap: 24px;
+  flex: 1;
+  min-height: 0;
+}
+.lp-compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 28px 1.1fr;
+  gap: 24px;
+  flex: 1;
+  min-height: 0;
+}
+.lp-pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+.lp-vh-section {
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 800px) {
+  .lp-corner { display: none !important; }
+  .lp-arrow { display: none !important; }
+  .lp-demo-grid { grid-template-columns: 1fr !important; }
+  .lp-compare-grid { grid-template-columns: 1fr !important; }
+  .lp-pricing-grid { grid-template-columns: 1fr !important; }
+  .lp-vh-section {
+    height: auto !important;
+    overflow: visible !important;
+    padding-bottom: 60px;
+  }
+}

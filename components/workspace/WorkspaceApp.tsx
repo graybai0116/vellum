@@ -37,7 +37,7 @@ function resizeImage(dataUrl: string, maxPx = 1536): Promise<string> {
 const ANON_LIMIT = 3;
 const MONTHLY_LIMIT = 10;
 
-export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Screen }) {
+export function WorkspaceApp({ initialScreen = "landing", upgraded = false }: { initialScreen?: Screen; upgraded?: boolean }) {
   const { isSignedIn } = useUser();
   const [screen, setScreen] = useState<Screen>(initialScreen);
   const [showAnonLimitModal, setShowAnonLimitModal] = useState(false);
@@ -80,6 +80,17 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       })
       .catch(() => { hasLoadedRef.current = true; });
   }, []);
+
+  useEffect(() => {
+    if (!upgraded) return;
+    window.history.replaceState({}, "", "/workspace");
+    setToastMsg("Welcome to Pro — unlimited analyses unlocked.");
+    const refetchPlan = () =>
+      fetch("/api/user-data").then((r) => r.json()).then((d) => { if (d.plan === "pro") setPlan("pro"); });
+    const t1 = setTimeout(refetchPlan, 3000);
+    const t2 = setTimeout(refetchPlan, 7000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [upgraded]);
 
   const persistUserData = (
     history: LibraryItem[],

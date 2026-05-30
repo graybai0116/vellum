@@ -7,9 +7,9 @@ export const metadata = {
 export default async function WorkspacePage({
   searchParams,
 }: {
-  searchParams: Promise<{ screen?: string }>;
+  searchParams: Promise<{ screen?: string; upgraded?: string }>;
 }) {
-  const { screen } = await searchParams;
+  const { screen, upgraded } = await searchParams;
   const initialScreen = screen === "library" || screen === "history" ? screen : "landing";
-  return <WorkspaceApp initialScreen={initialScreen} />;
+  return <WorkspaceApp initialScreen={initialScreen} upgraded={upgraded === "1"} />;
 }
