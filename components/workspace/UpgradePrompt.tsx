@@ -1,8 +1,10 @@
 "use client";
 import { useState } from "react";
 import { X, Crown } from "@phosphor-icons/react";
+import { useUser, SignInButton, SignUpButton } from "@clerk/nextjs";
 
 export function UpgradePrompt({ onClose }: { onClose: () => void }) {
+  const { isSignedIn } = useUser();
   const [upgrading, setUpgrading] = useState(false);
 
   const handleUpgrade = async () => {
@@ -41,34 +43,64 @@ export function UpgradePrompt({ onClose }: { onClose: () => void }) {
           <X weight="thin" size={12} />
         </button>
       </div>
+
       <div style={{
         fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 500,
         color: "var(--chalk)", letterSpacing: "-0.02em", lineHeight: 1.2, marginBottom: 8,
       }}>
-        Unlock all formats
+        {isSignedIn ? "Unlock all formats" : "Sign up to go Pro"}
       </div>
       <p style={{
         fontFamily: "var(--font-mono)", fontSize: 12,
         color: "rgba(255,255,255,0.45)", lineHeight: 1.65, marginBottom: 18,
       }}>
-        Midjourney, FLUX, DALL-E, Gemini, and Stable Diffusion — plus Compare mode and unlimited monthly analyses.
+        {isSignedIn
+          ? "Midjourney, FLUX, DALL-E, Gemini, and Stable Diffusion — plus unlimited monthly analyses."
+          : "Create a free account for 10 analyses/month, or go Pro for unlimited access and all prompt formats."}
       </p>
-      <button
-        onClick={handleUpgrade}
-        disabled={upgrading}
-        style={{
-          width: "100%", padding: "10px 0",
-          background: upgrading ? "rgba(255,255,255,0.1)" : "var(--chalk)",
-          color: upgrading ? "rgba(255,255,255,0.3)" : "var(--ink)",
-          borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
-          cursor: upgrading ? "default" : "pointer",
-          letterSpacing: "0.01em",
-          transition: "background 140ms var(--ease-out)",
-          border: "none",
-        }}
-      >
-        {upgrading ? "..." : "Upgrade · $10 / month"}
-      </button>
+
+      {isSignedIn ? (
+        <button
+          onClick={handleUpgrade}
+          disabled={upgrading}
+          style={{
+            width: "100%", padding: "10px 0",
+            background: upgrading ? "rgba(255,255,255,0.1)" : "var(--chalk)",
+            color: upgrading ? "rgba(255,255,255,0.3)" : "var(--ink)",
+            borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
+            cursor: upgrading ? "default" : "pointer",
+            letterSpacing: "0.01em",
+            transition: "background 140ms var(--ease-out)",
+            border: "none",
+          }}
+        >
+          {upgrading ? "..." : "Upgrade · $10 / month"}
+        </button>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <SignUpButton mode="modal">
+            <button style={{
+              width: "100%", padding: "10px 0",
+              background: "var(--chalk)", color: "var(--ink)",
+              borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600,
+              cursor: "pointer", border: "none", letterSpacing: "0.01em",
+            }}>
+              Sign up free
+            </button>
+          </SignUpButton>
+          <SignInButton mode="modal">
+            <button style={{
+              width: "100%", padding: "9px 0",
+              background: "transparent", color: "rgba(255,255,255,0.5)",
+              borderRadius: "var(--r-sm)", fontSize: 12, fontWeight: 500,
+              cursor: "pointer", border: "1px solid rgba(255,255,255,0.12)",
+              letterSpacing: "0.01em",
+            }}>
+              Sign in
+            </button>
+          </SignInButton>
+        </div>
+      )}
     </div>
   );
 }

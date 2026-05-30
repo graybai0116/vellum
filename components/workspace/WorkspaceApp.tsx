@@ -29,6 +29,7 @@ function resizeImage(dataUrl: string, maxPx = 1536): Promise<string> {
       canvas.getContext("2d")!.drawImage(img, 0, 0, w, h);
       resolve(canvas.toDataURL("image/jpeg", 0.88));
     };
+    img.onerror = () => resolve(dataUrl);
     img.src = dataUrl;
   });
 }
@@ -53,10 +54,12 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
   const [savedUploads, setSavedUploads] = useState<LibraryItem[]>([]);
   const [analysisHistory, setAnalysisHistory] = useState<LibraryItem[]>([]);
+  const [hasActiveResult, setHasActiveResult] = useState(false);
   const hasLoadedRef = useRef(false);
   const [confirmUnsaveId, setConfirmUnsaveId] = useState<string | null>(null);
   const [monthlyCount, setMonthlyCount] = useState(0);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [showAnonSaveModal, setShowAnonSaveModal] = useState(false);
   const analyzedItemsRef = useRef<Map<string, LibraryItem>>(new Map());
 
   useEffect(() => {
@@ -105,6 +108,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       setScreen("results");
     } else if (s === "landing") {
       setAnalysisResult(null); setUploadedImage(null); setAnalyzingImage(null);
+      setHasActiveResult(false);
       setScreen("landing");
     } else {
       setScreen(s as Screen);
@@ -112,11 +116,8 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleUpload = async ({ name, dataUrl }: { name: string; dataUrl: string }, mode: AnalysisMode) => {
-    if (!isSignedIn && anonCount >= ANON_LIMIT) { setShowAnonLimitModal(true); return; }
-    if (isSignedIn && plan === "free" && monthlyCount >= MONTHLY_LIMIT) { setShowUpgradePrompt(true); return; }
-    const resized = await resizeImage(dataUrl);
-    setAnalyzingImage({ src: resized, name });
+  const runAnalysis = (body: Record<string, string>, imageSrc: string, name: string, mode: AnalysisMode) => {
+    setAnalyzingImage({ src: imageSrc, name });
     setAnalysisResult(null);
     setAnalysisReady(false);
     setAnalysisError(false);
@@ -126,13 +127,14 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
     fetch("/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageDataUrl: resized, imageName: name, mode }),
+      body: JSON.stringify({ ...body, imageName: name, mode }),
     })
       .then(async (r) => {
         if (r.status === 429) { setShowUpgradePrompt(true); setAnalysisError(true); setAnalysisReady(true); return; }
         const result = await r.json();
         analyzedItemsRef.current.set(result.id, result);
         setAnalysisResult(result);
+        setHasActiveResult(true);
         setAnalysisReady(true);
         if (!isSignedIn) {
           const next = anonCount + 1;
@@ -150,42 +152,18 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       .catch(() => { setAnalysisError(true); setAnalysisReady(true); });
   };
 
+  const handleUpload = async ({ name, dataUrl }: { name: string; dataUrl: string }, mode: AnalysisMode) => {
+    if (!isSignedIn && anonCount >= ANON_LIMIT) { setShowAnonLimitModal(true); return; }
+    if (isSignedIn && plan === "free" && monthlyCount >= MONTHLY_LIMIT) { setShowUpgradePrompt(true); return; }
+    const resized = await resizeImage(dataUrl);
+    runAnalysis({ imageDataUrl: resized }, resized, name, mode);
+  };
+
   const handleUploadUrl = (url: string, mode: AnalysisMode) => {
     if (!isSignedIn && anonCount >= ANON_LIMIT) { setShowAnonLimitModal(true); return; }
     if (isSignedIn && plan === "free" && monthlyCount >= MONTHLY_LIMIT) { setShowUpgradePrompt(true); return; }
     const name = url.split("/").pop()?.split("?")[0] || "image";
-    setAnalyzingImage({ src: url, name });
-    setAnalysisResult(null);
-    setAnalysisReady(false);
-    setAnalysisError(false);
-    setAnalysisMode(mode);
-    setScreen("analyzing");
-
-    fetch("/api/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ imageUrl: url, imageName: name, mode }),
-    })
-      .then(async (r) => {
-        if (r.status === 429) { setShowUpgradePrompt(true); setAnalysisError(true); setAnalysisReady(true); return; }
-        const result = await r.json();
-        analyzedItemsRef.current.set(result.id, result);
-        setAnalysisResult(result);
-        setAnalysisReady(true);
-        if (!isSignedIn) {
-          const next = anonCount + 1;
-          setAnonCount(next);
-          localStorage.setItem("vellum_anon_uses", String(next));
-        } else if (plan === "free") {
-          setMonthlyCount((prev) => prev + 1);
-        }
-        setAnalysisHistory((prev) => {
-          const next = [result, ...prev];
-          if (isSignedIn) persistUserData(next, [...savedSet], savedUploads);
-          return next;
-        });
-      })
-      .catch(() => { setAnalysisError(true); setAnalysisReady(true); });
+    runAnalysis({ imageUrl: url }, url, name, mode);
   };
 
   const handleAnalyzingDone = useCallback(() => {
@@ -217,6 +195,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   };
 
   const requestToggleSave = (id: string) => {
+    if (!isSignedIn) { setShowAnonSaveModal(true); return; }
     if (savedSet.has(id)) {
       setConfirmUnsaveId(id);
     } else {
@@ -264,7 +243,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       </div>
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
-      <TopBar active={screen} onNavigate={(s) => navigate(s)} plan={plan} monthlyCount={monthlyCount} />
+      <TopBar active={screen} onNavigate={(s) => navigate(s)} plan={plan} monthlyCount={monthlyCount} anonCount={anonCount} hasResult={hasActiveResult} />
 
       {screen === "landing" && (
         <LandingScreen onUpload={handleUpload} onUploadUrl={handleUploadUrl} />
@@ -273,11 +252,11 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
         <AnalyzingScreen image={analyzingImage} onDone={handleAnalyzingDone} ready={analysisReady} error={analysisError} onBack={() => navigate("landing")} />
       )}
       {screen === "results" && (
-        <ResultsScreen item={currentItem} image={uploadedImage} mode={analysisMode} onNavigate={() => navigate("library")} onToast={setToastMsg} onSave={requestToggleSave} isSaved={savedSet.has(currentItem.id)} isPro={plan === "pro"} onShowUpgrade={() => setShowUpgradePrompt(true)} />
+        <ResultsScreen item={currentItem} image={uploadedImage} mode={analysisMode} onNavigate={(s) => navigate(s)} onToast={setToastMsg} onSave={requestToggleSave} isSaved={savedSet.has(currentItem.id)} isPro={plan === "pro"} onShowUpgrade={() => setShowUpgradePrompt(true)} />
       )}
       {screen === "library" && (
         isSignedIn
-          ? <LibraryScreen onNavigate={() => navigate("landing")} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} extraItems={savedUploads} hasLastAnalysis={analysisResult !== null} onBackToResults={() => navigate("back-to-results")} />
+          ? <LibraryScreen onNavigate={() => navigate("landing")} savedSet={savedSet} onToggleSave={requestToggleSave} onOpenModal={(id) => setModalItemId(id)} extraItems={savedUploads} hasLastAnalysis={hasActiveResult} onBackToResults={() => navigate("back-to-results")} />
           : <AuthWall title="Your Library" body="Save and revisit your favourite analyses." onBack={() => navigate("landing")} />
       )}
       {screen === "history" && (
@@ -354,6 +333,31 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
           </div>
         );
       })()}
+      {showAnonSaveModal && (
+        <div onClick={() => setShowAnonSaveModal(false)} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(20,14,10,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--chalk)", border: "1px solid var(--rule-soft)", borderRadius: "var(--r-lg)", width: "min(400px, 100%)", boxShadow: "var(--shadow-3)", overflow: "hidden" }}>
+            <div style={{ padding: "24px 24px 0" }}>
+              <div style={{ fontFamily: "var(--font-display)", fontSize: 22, fontWeight: 500, color: "var(--ink)", letterSpacing: "-0.02em" }}>Save to library</div>
+              <div style={{ fontFamily: "var(--font-accent)", fontStyle: "italic", fontSize: 14, color: "var(--walnut)", marginTop: 6 }}>Sign in to save and revisit your analyses</div>
+            </div>
+            <div style={{ padding: "14px 24px 24px" }}>
+              <p style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fg-3)", lineHeight: 1.7, marginBottom: 20 }}>
+                Create a free account to save analyses, build your library, and access your history.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <SignUpButton mode="modal">
+                  <button style={{ width: "100%", padding: "11px 0", background: "var(--ink)", color: "var(--chalk)", borderRadius: "var(--r-sm)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    Create free account
+                  </button>
+                </SignUpButton>
+                <SignInButton mode="modal">
+                  <button className="btn btn-ghost" style={{ width: "100%" }}>Already have an account? Sign in</button>
+                </SignInButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {showAnonLimitModal && (
         <div onClick={() => setShowAnonLimitModal(false)} style={{ position: "fixed", inset: 0, zIndex: 400, background: "rgba(20,14,10,0.5)", backdropFilter: "blur(8px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "var(--chalk)", border: "1px solid var(--rule-soft)", borderRadius: "var(--r-lg)", width: "min(400px, 100%)", boxShadow: "var(--shadow-3)", overflow: "hidden" }}>

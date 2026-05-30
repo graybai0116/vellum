@@ -88,7 +88,7 @@ const REALISM_PROMPT = `Analyze this image for perfect AI replication. Return ON
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   let currentCount = 0;
-  let isNewMonth = false;
+  let shouldTrackUsage = false;
 
   if (userId) {
     const { data: userData } = await supabase
@@ -97,15 +97,16 @@ export async function POST(req: NextRequest) {
       .eq("user_id", userId)
       .single();
 
-    if (userData) {
+    if (userData && (userData.plan ?? "free") !== "pro") {
       const thisMonth = new Date().toISOString().slice(0, 7);
       const storedMonth = userData.monthly_reset ? String(userData.monthly_reset).slice(0, 7) : "";
-      isNewMonth = thisMonth !== storedMonth;
+      const isNewMonth = thisMonth !== storedMonth;
       currentCount = isNewMonth ? 0 : (userData.monthly_count ?? 0);
 
-      if ((userData.plan ?? "free") !== "pro" && currentCount >= 10) {
+      if (currentCount >= 10) {
         return NextResponse.json({ error: "Monthly limit reached" }, { status: 429 });
       }
+      shouldTrackUsage = true;
     }
   }
 
@@ -153,7 +154,7 @@ export async function POST(req: NextRequest) {
       hour: "2-digit", minute: "2-digit", hour12: false,
     });
 
-    if (userId) {
+    if (shouldTrackUsage) {
       await supabase.from("user_data")
         .update({
           monthly_count: currentCount + 1,

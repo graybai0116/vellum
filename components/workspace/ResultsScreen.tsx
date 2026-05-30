@@ -21,7 +21,7 @@ export function ResultsScreen({
   item: LibraryItem;
   image: { src: string; name: string } | null;
   mode?: "style" | "realism";
-  onNavigate: (s: "library") => void;
+  onNavigate: (s: "library" | "landing") => void;
   onToast: (msg: string) => void;
   onSave: (id: string) => void;
   isSaved: boolean;
@@ -69,9 +69,12 @@ export function ResultsScreen({
             <span style={{ fontFamily: "var(--font-display)", color: "var(--ink)", fontSize: 16 }}>{item.title}</span>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn btn-ghost" onClick={() => onNavigate("landing")} style={{ fontSize: 12 }}>
+              New analysis
+            </button>
             <button className="btn btn-ghost" onClick={() => onSave(item.id)}>
               <BookmarkSimple weight={isSaved ? "fill" : "thin"} size={16} />
-              {isSaved ? "Saved to library" : "Save to library"}
+              {isSaved ? "Saved" : "Save"}
             </button>
             <button className="btn btn-accent" onClick={copyPrompt}>
               <Copy weight="thin" size={16} />Copy prompt

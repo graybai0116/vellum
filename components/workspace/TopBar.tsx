@@ -7,14 +7,17 @@ import { Mark } from "@/components/ui/Mark";
 type Screen = "landing" | "analyzing" | "results" | "library" | "history";
 
 const MONTHLY_LIMIT = 10;
+const ANON_LIMIT = 3;
 
 export function TopBar({
-  active, onNavigate, plan, monthlyCount = 0,
+  active, onNavigate, plan, monthlyCount = 0, anonCount = 0, hasResult = false,
 }: {
   active: Screen;
   onNavigate: (s: Screen) => void;
   plan?: "free" | "pro";
   monthlyCount?: number;
+  anonCount?: number;
+  hasResult?: boolean;
 }) {
   const { isSignedIn } = useUser();
   const [upgrading, setUpgrading] = useState(false);
@@ -39,8 +42,8 @@ export function TopBar({
       </Link>
       <div className="topbar-right">
         <button
-          onClick={() => onNavigate("landing")}
-          className={`min-link${active === "landing" ? " active" : ""}`}
+          onClick={() => onNavigate(hasResult ? "results" : "landing")}
+          className={`min-link${active === "landing" || active === "results" ? " active" : ""}`}
         >New</button>
         <button
           onClick={() => onNavigate("library")}
@@ -69,6 +72,11 @@ export function TopBar({
           >
             {upgrading ? "..." : "Upgrade Pro"}
           </button>
+        )}
+        {!isSignedIn && (
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)", letterSpacing: "0.04em" }}>
+            {Math.max(0, ANON_LIMIT - anonCount)}/{ANON_LIMIT} free
+          </span>
         )}
         {isSignedIn ? (
           <UserButton />
