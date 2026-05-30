@@ -6,12 +6,15 @@ import { Mark } from "@/components/ui/Mark";
 
 type Screen = "landing" | "analyzing" | "results" | "library" | "history";
 
+const MONTHLY_LIMIT = 10;
+
 export function TopBar({
-  active, onNavigate, plan,
+  active, onNavigate, plan, monthlyCount = 0,
 }: {
   active: Screen;
   onNavigate: (s: Screen) => void;
   plan?: "free" | "pro";
+  monthlyCount?: number;
 }) {
   const { isSignedIn } = useUser();
   const [upgrading, setUpgrading] = useState(false);
@@ -48,6 +51,11 @@ export function TopBar({
           className={`min-link${active === "history" ? " active" : ""}`}
         >History</button>
         <span className="topbar-divider" />
+        {isSignedIn && plan === "free" && (
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)", letterSpacing: "0.04em" }}>
+            {Math.max(0, MONTHLY_LIMIT - monthlyCount)}/{MONTHLY_LIMIT}
+          </span>
+        )}
         {isSignedIn && plan === "free" && (
           <button
             onClick={handleUpgrade}

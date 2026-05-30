@@ -11,6 +11,7 @@ import { LibraryScreen } from "./LibraryScreen";
 import { HistoryScreen } from "./HistoryScreen";
 import { StyleModal } from "./StyleModal";
 import { Toast } from "@/components/ui/Toast";
+import { UpgradePrompt } from "./UpgradePrompt";
 
 type Screen = "landing" | "analyzing" | "results" | "library" | "history";
 interface UploadedImage { src: string; name: string; }
@@ -33,6 +34,7 @@ function resizeImage(dataUrl: string, maxPx = 1536): Promise<string> {
 }
 
 const ANON_LIMIT = 3;
+const MONTHLY_LIMIT = 10;
 
 export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Screen }) {
   const { isSignedIn } = useUser();
@@ -53,6 +55,8 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
   const [analysisHistory, setAnalysisHistory] = useState<LibraryItem[]>([]);
   const hasLoadedRef = useRef(false);
   const [confirmUnsaveId, setConfirmUnsaveId] = useState<string | null>(null);
+  const [monthlyCount, setMonthlyCount] = useState(0);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const analyzedItemsRef = useRef<Map<string, LibraryItem>>(new Map());
 
   useEffect(() => {
@@ -68,6 +72,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
         setSavedUploads(data.saved_uploads ?? []);
         setSavedSet(new Set(data.saved_ids ?? []));
         setPlan(data.plan ?? "free");
+        setMonthlyCount(data.monthly_count ?? 0);
         hasLoadedRef.current = true;
       })
       .catch(() => { hasLoadedRef.current = true; });
@@ -109,6 +114,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
 
   const handleUpload = async ({ name, dataUrl }: { name: string; dataUrl: string }, mode: AnalysisMode) => {
     if (!isSignedIn && anonCount >= ANON_LIMIT) { setShowAnonLimitModal(true); return; }
+    if (isSignedIn && plan === "free" && monthlyCount >= MONTHLY_LIMIT) { setShowUpgradePrompt(true); return; }
     const resized = await resizeImage(dataUrl);
     setAnalyzingImage({ src: resized, name });
     setAnalysisResult(null);
@@ -122,8 +128,9 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageDataUrl: resized, imageName: name, mode }),
     })
-      .then((r) => r.json())
-      .then((result) => {
+      .then(async (r) => {
+        if (r.status === 429) { setShowUpgradePrompt(true); setAnalysisError(true); setAnalysisReady(true); return; }
+        const result = await r.json();
         analyzedItemsRef.current.set(result.id, result);
         setAnalysisResult(result);
         setAnalysisReady(true);
@@ -131,6 +138,8 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
           const next = anonCount + 1;
           setAnonCount(next);
           localStorage.setItem("vellum_anon_uses", String(next));
+        } else if (plan === "free") {
+          setMonthlyCount((prev) => prev + 1);
         }
         setAnalysisHistory((prev) => {
           const next = [result, ...prev];
@@ -143,6 +152,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
 
   const handleUploadUrl = (url: string, mode: AnalysisMode) => {
     if (!isSignedIn && anonCount >= ANON_LIMIT) { setShowAnonLimitModal(true); return; }
+    if (isSignedIn && plan === "free" && monthlyCount >= MONTHLY_LIMIT) { setShowUpgradePrompt(true); return; }
     const name = url.split("/").pop()?.split("?")[0] || "image";
     setAnalyzingImage({ src: url, name });
     setAnalysisResult(null);
@@ -156,8 +166,9 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ imageUrl: url, imageName: name, mode }),
     })
-      .then((r) => r.json())
-      .then((result) => {
+      .then(async (r) => {
+        if (r.status === 429) { setShowUpgradePrompt(true); setAnalysisError(true); setAnalysisReady(true); return; }
+        const result = await r.json();
         analyzedItemsRef.current.set(result.id, result);
         setAnalysisResult(result);
         setAnalysisReady(true);
@@ -165,6 +176,8 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
           const next = anonCount + 1;
           setAnonCount(next);
           localStorage.setItem("vellum_anon_uses", String(next));
+        } else if (plan === "free") {
+          setMonthlyCount((prev) => prev + 1);
         }
         setAnalysisHistory((prev) => {
           const next = [result, ...prev];
@@ -251,7 +264,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
       </div>
 
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column", flex: 1 }}>
-      <TopBar active={screen} onNavigate={(s) => navigate(s)} plan={plan} />
+      <TopBar active={screen} onNavigate={(s) => navigate(s)} plan={plan} monthlyCount={monthlyCount} />
 
       {screen === "landing" && (
         <LandingScreen onUpload={handleUpload} onUploadUrl={handleUploadUrl} />
@@ -260,7 +273,7 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
         <AnalyzingScreen image={analyzingImage} onDone={handleAnalyzingDone} ready={analysisReady} error={analysisError} onBack={() => navigate("landing")} />
       )}
       {screen === "results" && (
-        <ResultsScreen item={currentItem} image={uploadedImage} mode={analysisMode} onNavigate={() => navigate("library")} onToast={setToastMsg} onSave={requestToggleSave} isSaved={savedSet.has(currentItem.id)} />
+        <ResultsScreen item={currentItem} image={uploadedImage} mode={analysisMode} onNavigate={() => navigate("library")} onToast={setToastMsg} onSave={requestToggleSave} isSaved={savedSet.has(currentItem.id)} isPro={plan === "pro"} onShowUpgrade={() => setShowUpgradePrompt(true)} />
       )}
       {screen === "library" && (
         isSignedIn
@@ -285,10 +298,15 @@ export function WorkspaceApp({ initialScreen = "landing" }: { initialScreen?: Sc
           onPrev={() => setModalItemId(allLibraryItems[modalIdx - 1].id)}
           onNext={() => setModalItemId(allLibraryItems[modalIdx + 1].id)}
           onOpenResults={() => { setModalItemId(null); navigate("results", modalItem.id); }}
+          isPro={plan === "pro"}
+          onShowUpgrade={() => setShowUpgradePrompt(true)}
         />
       )}
 
       <Toast msg={toastMsg} onDone={() => setToastMsg("")} />
+      {showUpgradePrompt && plan !== "pro" && (
+        <UpgradePrompt onClose={() => setShowUpgradePrompt(false)} />
+      )}
 
       {confirmUnsaveId && (() => {
         const item = allLibraryItems.find((x) => x.id === confirmUnsaveId) || LIBRARY.find((x) => x.id === confirmUnsaveId);

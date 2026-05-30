@@ -8,12 +8,17 @@ export async function GET() {
 
   const { data } = await supabase
     .from("user_data")
-    .select("history, saved_ids, saved_uploads, plan")
+    .select("history, saved_ids, saved_uploads, plan, monthly_count, monthly_reset")
     .eq("user_id", userId)
     .single();
 
-  if (!data) return NextResponse.json({ history: [], saved_ids: [], saved_uploads: [], plan: "free" });
-  return NextResponse.json({ ...data, plan: data.plan ?? "free" });
+  if (!data) return NextResponse.json({ history: [], saved_ids: [], saved_uploads: [], plan: "free", monthly_count: 0 });
+
+  const thisMonth = new Date().toISOString().slice(0, 7);
+  const storedMonth = data.monthly_reset ? String(data.monthly_reset).slice(0, 7) : "";
+  const monthly_count = thisMonth === storedMonth ? (data.monthly_count ?? 0) : 0;
+
+  return NextResponse.json({ ...data, plan: data.plan ?? "free", monthly_count });
 }
 
 export async function PUT(req: Request) {

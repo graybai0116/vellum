@@ -22,7 +22,7 @@ const INLINE: React.CSSProperties = {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function StyleModal({
-  item, onClose, onToast, onSave, isSaved, onPrev, onNext, hasPrev, hasNext, onOpenResults,
+  item, onClose, onToast, onSave, isSaved, onPrev, onNext, hasPrev, hasNext, onOpenResults, isPro = false, onShowUpgrade,
 }: {
   item: LibraryItem;
   onClose: () => void;
@@ -34,6 +34,8 @@ export function StyleModal({
   hasPrev: boolean;
   hasNext: boolean;
   onOpenResults?: () => void;
+  isPro?: boolean;
+  onShowUpgrade?: () => void;
 }) {
   const mode: Mode = item.subjects ? "realism" : "style";
   const [tab, setTab] = useState<"structured" | "midjourney" | "flux" | "dalle" | "gemini" | "sd">("structured");
@@ -70,12 +72,12 @@ export function StyleModal({
   const effectiveItem = { ...item, promptText: body };
 
   const TABS = [
-    { id: "structured" as const, lbl: "Analysis", Icon: ListDashes },
-    { id: "midjourney" as const, lbl: "Midjourney", Icon: TerminalWindow },
-    { id: "flux" as const, lbl: "FLUX", Icon: TerminalWindow },
-    { id: "dalle" as const, lbl: "ChatGPT / DALL-E", Icon: TerminalWindow },
-    { id: "gemini" as const, lbl: "Gemini", Icon: TerminalWindow },
-    { id: "sd" as const, lbl: "Stable Diffusion", Icon: TerminalWindow },
+    { id: "structured" as const, lbl: "Analysis", Icon: ListDashes, pro: false },
+    { id: "midjourney" as const, lbl: "Midjourney", Icon: TerminalWindow, pro: true },
+    { id: "flux" as const, lbl: "FLUX", Icon: TerminalWindow, pro: true },
+    { id: "dalle" as const, lbl: "ChatGPT / DALL-E", Icon: TerminalWindow, pro: true },
+    { id: "gemini" as const, lbl: "Gemini", Icon: TerminalWindow, pro: true },
+    { id: "sd" as const, lbl: "Stable Diffusion", Icon: TerminalWindow, pro: true },
   ];
 
   return (
@@ -220,17 +222,34 @@ export function StyleModal({
               {/* Prompt tabs */}
               <div style={{ background: "color-mix(in oklch, var(--chalk) 70%, transparent)", border: "1px solid color-mix(in oklch, var(--rule) 70%, transparent)", borderRadius: 8, overflow: "hidden" }}>
                 <div style={{ display: "flex", padding: "8px 8px 0", borderBottom: "1px solid color-mix(in oklch, var(--rule) 60%, transparent)", gap: 0, overflowX: "auto", scrollbarWidth: "none" }}>
-                  {TABS.map((t) => (
-                    <button key={t.id} onClick={() => setTab(t.id)} style={{
-                      display: "inline-flex", alignItems: "center", gap: 6,
-                      padding: "8px 11px", fontSize: 11.5, fontWeight: tab === t.id ? 600 : 500,
-                      color: tab === t.id ? "var(--ink)" : "var(--fg-mute)",
-                      borderBottom: tab === t.id ? "1px solid var(--ink)" : "1px solid transparent",
-                      marginBottom: -1, whiteSpace: "nowrap",
-                    }}>
-                      <t.Icon weight="thin" size={13} />{t.lbl}
-                    </button>
-                  ))}
+                  {TABS.map(({ id, lbl, Icon, pro }) => {
+                    const locked = pro && !isPro;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => locked ? onShowUpgrade?.() : setTab(id)}
+                        style={{
+                          display: "inline-flex", alignItems: "center", gap: 6,
+                          padding: "8px 11px", fontSize: 11.5, fontWeight: tab === id ? 600 : 500,
+                          color: locked ? "var(--fg-mute)" : tab === id ? "var(--ink)" : "var(--fg-mute)",
+                          borderBottom: tab === id ? "1px solid var(--ink)" : "1px solid transparent",
+                          marginBottom: -1, whiteSpace: "nowrap",
+                          opacity: locked ? 0.65 : 1,
+                        }}
+                      >
+                        <Icon weight="thin" size={13} />{lbl}
+                        {locked && (
+                          <span style={{
+                            fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em",
+                            padding: "2px 5px", borderRadius: "var(--r-pill)",
+                            background: "color-mix(in oklch, #C4A76A 15%, transparent)",
+                            color: "#A88A50",
+                            border: "1px solid color-mix(in oklch, #C4A76A 30%, transparent)",
+                          }}>PRO</span>
+                        )}
+                      </button>
+                    );
+                  })}
                   <div style={{ flex: 1 }} />
                   {tab === "structured" && (
                     <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
@@ -362,6 +381,7 @@ export function StyleModal({
                       </div>
                     );
                   })()}
+
                 </div>
               </div>
             </div>

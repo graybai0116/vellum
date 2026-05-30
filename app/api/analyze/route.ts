@@ -1,5 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { supabase } from "@/lib/supabase";
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -84,6 +86,29 @@ const REALISM_PROMPT = `Analyze this image for perfect AI replication. Return ON
 
 // ─── Handler ───────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
+  const { userId } = await auth();
+  let currentCount = 0;
+  let isNewMonth = false;
+
+  if (userId) {
+    const { data: userData } = await supabase
+      .from("user_data")
+      .select("plan, monthly_count, monthly_reset")
+      .eq("user_id", userId)
+      .single();
+
+    if (userData) {
+      const thisMonth = new Date().toISOString().slice(0, 7);
+      const storedMonth = userData.monthly_reset ? String(userData.monthly_reset).slice(0, 7) : "";
+      isNewMonth = thisMonth !== storedMonth;
+      currentCount = isNewMonth ? 0 : (userData.monthly_count ?? 0);
+
+      if ((userData.plan ?? "free") !== "pro" && currentCount >= 10) {
+        return NextResponse.json({ error: "Monthly limit reached" }, { status: 429 });
+      }
+    }
+  }
+
   try {
     const { imageDataUrl, imageUrl, imageName, mode = "style" } = await req.json();
 
@@ -127,6 +152,15 @@ export async function POST(req: NextRequest) {
     const timeStr = new Date().toLocaleTimeString("en-US", {
       hour: "2-digit", minute: "2-digit", hour12: false,
     });
+
+    if (userId) {
+      await supabase.from("user_data")
+        .update({
+          monthly_count: currentCount + 1,
+          monthly_reset: new Date().toISOString().slice(0, 10),
+        })
+        .eq("user_id", userId);
+    }
 
     return NextResponse.json({
       id: `upload-${Date.now()}`,

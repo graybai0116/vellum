@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { ArrowLeft, BookmarkSimple, Copy, ListDashes, TerminalWindow, PencilSimple, Check, X, ArrowsOut, ArrowCounterClockwise } from "@phosphor-icons/react";
+import { ArrowLeft, BookmarkSimple, Copy, ListDashes, TerminalWindow, PencilSimple, Check, X, ArrowsOut, ArrowCounterClockwise, LockSimple } from "@phosphor-icons/react";
 import { Eyebrow, SectionRule } from "@/components/ui/Eyebrow";
 import { PaletteStrip } from "@/components/ui/PaletteStrip";
 import { PromptHighlight } from "@/components/ui/PromptHighlight";
@@ -16,7 +16,7 @@ const INLINE_COPY_STYLE: React.CSSProperties = {
 };
 
 export function ResultsScreen({
-  item, image, mode = "style", onNavigate, onToast, onSave, isSaved,
+  item, image, mode = "style", onNavigate, onToast, onSave, isSaved, isPro = false, onShowUpgrade,
 }: {
   item: LibraryItem;
   image: { src: string; name: string } | null;
@@ -25,6 +25,8 @@ export function ResultsScreen({
   onToast: (msg: string) => void;
   onSave: (id: string) => void;
   isSaved: boolean;
+  isPro?: boolean;
+  onShowUpgrade?: () => void;
 }) {
   const [tab, setTab] = useState<"structured" | "midjourney" | "flux" | "dalle" | "gemini" | "sd">("structured");
   const [editing, setEditing] = useState(false);
@@ -46,12 +48,12 @@ export function ResultsScreen({
   };
 
   const TABS = [
-    { id: "structured" as const, lbl: "Analysis", Icon: ListDashes },
-    { id: "midjourney" as const, lbl: "Midjourney", Icon: TerminalWindow },
-    { id: "flux" as const, lbl: "FLUX", Icon: TerminalWindow },
-    { id: "dalle" as const, lbl: "ChatGPT / DALL-E", Icon: TerminalWindow },
-    { id: "gemini" as const, lbl: "Gemini", Icon: TerminalWindow },
-    { id: "sd" as const, lbl: "Stable Diffusion", Icon: TerminalWindow },
+    { id: "structured" as const, lbl: "Analysis", Icon: ListDashes, pro: false },
+    { id: "midjourney" as const, lbl: "Midjourney", Icon: TerminalWindow, pro: true },
+    { id: "flux" as const, lbl: "FLUX", Icon: TerminalWindow, pro: true },
+    { id: "dalle" as const, lbl: "ChatGPT / DALL-E", Icon: TerminalWindow, pro: true },
+    { id: "gemini" as const, lbl: "Gemini", Icon: TerminalWindow, pro: true },
+    { id: "sd" as const, lbl: "Stable Diffusion", Icon: TerminalWindow, pro: true },
   ];
 
   return (
@@ -171,17 +173,35 @@ export function ResultsScreen({
         <SectionRule num="05" label="Prompt output" />
         <div style={{ background: "var(--chalk)", border: "1px solid var(--rule-soft)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
           <div style={{ display: "flex", borderBottom: "1px solid var(--rule-soft)", padding: "12px 18px 0", gap: 0, overflowX: "auto", scrollbarWidth: "none" }}>
-            {TABS.map(({ id, lbl, Icon }) => (
-              <button key={id} onClick={() => setTab(id)} style={{
-                display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px",
-                borderBottom: tab === id ? "1px solid var(--ink)" : "1px solid transparent",
-                marginBottom: -1, color: tab === id ? "var(--ink)" : "var(--fg-mute)",
-                fontSize: 13, fontWeight: tab === id ? 600 : 500,
-                transition: "all var(--t-fast) var(--ease-out)",
-              }}>
-                <Icon weight="thin" size={16} />{lbl}
-              </button>
-            ))}
+            {TABS.map(({ id, lbl, Icon, pro }) => {
+              const locked = pro && !isPro;
+              return (
+                <button
+                  key={id}
+                  onClick={() => locked ? onShowUpgrade?.() : setTab(id)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 8, padding: "10px 14px",
+                    borderBottom: tab === id ? "1px solid var(--ink)" : "1px solid transparent",
+                    marginBottom: -1,
+                    color: locked ? "var(--fg-mute)" : tab === id ? "var(--ink)" : "var(--fg-mute)",
+                    fontSize: 13, fontWeight: tab === id ? 600 : 500,
+                    transition: "all var(--t-fast) var(--ease-out)",
+                    opacity: locked ? 0.65 : 1,
+                  }}
+                >
+                  <Icon weight="thin" size={16} />{lbl}
+                  {locked && (
+                    <span style={{
+                      fontFamily: "var(--font-mono)", fontSize: 9, letterSpacing: "0.1em",
+                      padding: "2px 6px", borderRadius: "var(--r-pill)",
+                      background: "color-mix(in oklch, #C4A76A 15%, transparent)",
+                      color: "#A88A50",
+                      border: "1px solid color-mix(in oklch, #C4A76A 30%, transparent)",
+                    }}>PRO</span>
+                  )}
+                </button>
+              );
+            })}
             <div style={{ flex: 1 }} />
             {tab === "structured" && (
               <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -339,6 +359,7 @@ export function ResultsScreen({
                 </div>
               );
             })()}
+
           </div>
         </div>
       </div>
