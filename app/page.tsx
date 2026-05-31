@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Mark } from "@/components/ui/Mark";
 import { EtherealShadow } from "@/components/ui/etheral-shadow";
 import { ArrowRightIcon, CaretDownIcon } from "@phosphor-icons/react";
+import { SignUpButton, useUser } from "@clerk/nextjs";
 
 const SAMPLE_PALETTE = [
   { hex: "#2D4357" }, { hex: "#4A8D85" }, { hex: "#C0B8AC" },
@@ -40,6 +41,7 @@ function ScrollDown({ to }: { to: string }) {
 }
 
 export default function LandingPage() {
+  const { isSignedIn } = useUser();
   const [pastHero, setPastHero] = useState(false);
   const [atTop, setAtTop] = useState(true);
   const [mouseNearTop, setMouseNearTop] = useState(false);
@@ -466,11 +468,21 @@ export default function LandingPage() {
           <p style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--stone)", lineHeight: 1.6, maxWidth: 360 }}>
             Free to start. No credit card required.
           </p>
-          <Link href="/sign-up" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "var(--ink)", color: "var(--chalk)", padding: "15px 28px", borderRadius: 4, fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em", textDecoration: "none", transition: "background 220ms var(--ease-out)", marginTop: 4 }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--walnut)"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--ink)"; }}>
-            Get started free <ArrowRightIcon weight="thin" size={18} />
-          </Link>
+          {isSignedIn ? (
+            <Link href="/workspace" style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "var(--ink)", color: "var(--chalk)", padding: "15px 28px", borderRadius: 4, fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em", textDecoration: "none", transition: "background 220ms var(--ease-out)", marginTop: 4 }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--walnut)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = "var(--ink)"; }}>
+              Open workspace <ArrowRightIcon weight="thin" size={18} />
+            </Link>
+          ) : (
+            <SignUpButton mode="modal">
+              <button style={{ display: "inline-flex", alignItems: "center", gap: 10, background: "var(--ink)", color: "var(--chalk)", padding: "15px 28px", borderRadius: 4, fontSize: 14, fontWeight: 500, letterSpacing: "-0.005em", cursor: "pointer", transition: "background 220ms var(--ease-out)", marginTop: 4 }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--walnut)"; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--ink)"; }}>
+                Get started free <ArrowRightIcon weight="thin" size={18} />
+              </button>
+            </SignUpButton>
+          )}
         </div>
       </section>
 
